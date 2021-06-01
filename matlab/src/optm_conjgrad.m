@@ -47,7 +47,8 @@
 %%   in variables as `[xatol,xrtol]` or just `xrtol` to assume `xatol = 0`.  By
 %%   default, `xtol = [0.0,1e-6]`.
 %%
-%% * "verbose" is to print various information at each iterations.
+%% * "verbose" is to specify whether to to print various information at each
+%%   iterations.
 %%
 %%
 %% ## Convergence criteria
@@ -99,10 +100,7 @@
 %%
 %% ## Returned Status
 %%
-%% The funtion retuns the solution `x` and a termination code `status` is
-%% negative to indicate an error, zero to indicate that the maximum number of
-%% iterations have been reached, positive to indicate that the method has
-%% converged.  More specfically, `status` is one of:
+%% The funtion retuns the solution `x` and a termination code which is one of:
 %%
 %% * `status = -1` if the left-hand-side matrix `A` is found to be not positive
 %%   definite;
