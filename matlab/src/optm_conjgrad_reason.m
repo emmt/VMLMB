@@ -11,6 +11,6 @@ function str = optm_conjgrad_reason(status)
         case 3 %% X_TEST_SATISFIED      =
             str = "variables change test satisfied";
         otherwise
-            "unknown conjugate gradient result"
+            str = "unknown conjugate gradient result";
     end
 end
