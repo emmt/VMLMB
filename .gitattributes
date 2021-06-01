@@ -1,0 +1,2 @@
+# FITS header part is text but data part is binary.
+*.fits -diff
