@@ -51,10 +51,10 @@ function optm_test_line_search(f, df, stp, lnsrch, quadratic)
     nevals = 1;
     lnsrch = optm_start_line_search(lnsrch, f0, df0, stp);
     optm_assert(lnsrch.step == stp, "lnsrch.step == stp");
-    optm_assert(lnsrch.state == 1, "lnsrch.state == 1");
+    optm_assert(lnsrch.stage == 1, "lnsrch.stage == 1");
     optm_assert(lnsrch.finit == f0, "lnsrch.finit == f0");
     optm_assert(lnsrch.ginit == df0, "lnsrch.dfinit == df0");
-    while (lnsrch.state == 1)
+    while (lnsrch.stage == 1)
         stp = lnsrch.step;
         f1 = f(stp);
         ++nevals;
@@ -62,12 +62,12 @@ function optm_test_line_search(f, df, stp, lnsrch, quadratic)
         lnsrch = optm_iterate_line_search(lnsrch, f(stp));
         converged = (f1 <= f0 + lnsrch.ftol*stp*df0);
         if converged
-            state = 2;
+            stage = 2;
         else
-            state = 1;
+            stage = 1;
         end
-        optm_assert(lnsrch.state == state, "lnsrch.state == state");
-        if (lnsrch.state == 1)
+        optm_assert(lnsrch.stage == stage, "lnsrch.stage == stage");
+        if (lnsrch.stage == 1)
             optm_assert(lnsrch.step < stp, "lnsrch.step < stp");
             optm_assert(lnsrch.step > 0, "lnsrch.step > 0");
             optm_assert(lnsrch.step >= lnsrch.smin*stp, "lnsrch.step >= lnsrch.smin*stp");
@@ -75,7 +75,7 @@ function optm_test_line_search(f, df, stp, lnsrch, quadratic)
 
         end
     end
-    optm_assert(lnsrch.state == 2, "lnsrch.state == 2");
+    optm_assert(lnsrch.stage == 2, "lnsrch.stage == 2");
     optm_assert(!quadratic || nevals <= 3, " !quadratic || nevals <= 3");
     optm_assert(fmin <= f0 + lnsrch.ftol*lnsrch.step*df0, "fmin <= f0 + lnsrch.ftol*lnsrch.stp*df0");
 end

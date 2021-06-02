@@ -12,7 +12,7 @@
 %%     phi(alpha) = f(x0 + alpha*d)
 %%
 %% Upon return of `optm_iterate_line_search`, the line-search context `lnsrch`
-%% is updated so that `lnsrch.state` is normally one of:
+%% is updated so that `lnsrch.stage` is normally one of:
 %%
 %% 1: Line-search in progress.  The next step to try is `lnsrch.step`,
 %%    `optm_iterate_line_search` shall be called with the new function value at
@@ -22,8 +22,8 @@
 %%    unchanged and `x0 + lnsrch.step*d` is the new iterate of the optimization
 %%    method.
 %%
-%% Upon creation of the line-search instance, `lnsrch.state` is set to 0.  A
-%% strictly negative value for `lnsrch.state` may be used to indicate an error.
+%% Upon creation of the line-search instance, `lnsrch.stage` is set to 0.  A
+%% strictly negative value for `lnsrch.stage` may be used to indicate an error.
 %% A typical usage is:
 %%
 %%     lnsrch = optm_new_line_search();
@@ -40,7 +40,7 @@
 %%         x0 = x;
 %%         df0 = optm_inner(d, gx);
 %%         lnsrch = optm_start_line_search(lnsrch, f0, df0, stp);
-%%         while (lnsrch.state == 1)
+%%         while (lnsrch.stage == 1)
 %%             x = x0 + lnsrch.step*d;
 %%             fx = f(x);
 %%             lnsrch = optm_iterate_line_search(lnsrch, fx);
@@ -53,7 +53,7 @@ function lnsrch = optm_iterate_line_search(lnsrch, f)
     ftol  = lnsrch.ftol;
     if (f <= finit + ftol*(ginit*step))
         %% Linesearch has converged.
-        lnsrch.state = 2;
+        lnsrch.stage = 2;
     else
         %% Linesearch has not converged.
         smin = lnsrch.smin;
@@ -75,6 +75,6 @@ function lnsrch = optm_iterate_line_search(lnsrch, f)
             error("invalid fields smin and smax")
         end
         lnsrch.step = gamma*step;
-        lnsrch.state = 1;
+        lnsrch.stage = 1;
     end
 end

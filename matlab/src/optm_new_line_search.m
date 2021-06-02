@@ -75,7 +75,7 @@ function lnsrch = optm_new_line_search(varargin)
     if lnsrch.smin > lnsrch.smax
         error("`smin` must be less or equal `smax`");
     end
-    lnsrch.state = 0;
+    lnsrch.stage = 0;
     lnsrch.step  = 0;
     lnsrch.finit = nan();
     lnsrch.ginit = nan();

@@ -23,7 +23,7 @@
 %% to try.
 %%
 %% Upon return of `optm_start_line_search`, the line-search context `lnsrch` is
-%% updated so that `lnsrch.state` is normally equal to 1 indicating that the
+%% updated so that `lnsrch.stage` is normally equal to 1 indicating that the
 %% next trial step is `lnsrch.step` (which should be equal to `stp` in that
 %% case), and that `optm_iterate_line_search` shall be called with the new
 %% function value at `x0 + lnsrch.step*d`.
@@ -32,19 +32,19 @@
 function lnsrch = optm_start_line_search(lnsrch, f0, df0, stp)
     if isfinite(df0) && df0 < 0
         if ~isfinite(stp) || stp <= 0
-            state = -1;
+            stage = -1;
             stp = 0.0;
             error("first step to try must be strictly greater than 0");
         else
-            state = 1;
+            stage = 1;
         end
     else
-        state = -1;
+        stage = -1;
         stp = 0.0;
         error("not a descent direction");
     end
     lnsrch.finit = f0;
     lnsrch.ginit = df0;
     lnsrch.step  = stp;
-    lnsrch.state = state;
+    lnsrch.stage = stage;
 end
