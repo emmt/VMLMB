@@ -197,7 +197,7 @@ function [x, status] = optm_conjgrad(A, b, x, varargin)
         oldrho = rho;
         rho = optm_inner(r, z); %% rho = ‖r‖_M^2
         if k == 0
-            gtest = tolerance(sqrt(rho), gtol);
+            gtest = optm_tolerance(sqrt(rho), gtol);
         end
         if verbose
             t = (time() - t0)*1E3; %% elapsed time in ms
@@ -261,7 +261,7 @@ function [x, status] = optm_conjgrad(A, b, x, varargin)
         x += alpha*p;
         phi = alpha*rho/2;  %% phi = f(x_{k}) - f(x_{k+1}) ≥ 0
         phimax = max(phi, phimax);
-        if phi <= tolerance(phimax, ftol)
+        if phi <= optm_tolerance(phimax, ftol)
             %% Normal convergence in the function reduction.
             if verbose
                 printf("%s\n", "# Convergence in the function reduction.");
@@ -269,7 +269,7 @@ function [x, status] = optm_conjgrad(A, b, x, varargin)
             status = optm_status("FTEST_SATISFIED");
             break
         end
-        if xtest && alpha*optm_norm2(p) <= tolerance(x, xtol)
+        if xtest && alpha*optm_norm2(p) <= optm_tolerance(x, xtol)
             %% Normal convergence in the variables.
             if verbose
                 printf("%s\n", "# Convergence in the variables.");
@@ -294,39 +294,5 @@ function val = check_tolerance(key, val)
         return
     else
         error("parameter '%s' value must be `rtol` or `[atol, rtol]`", key);
-    end
-end
-
-%% The call:
-%%
-%%    val = tolerance(arg, tol);
-%%
-%% yields a nonnegative tolerance based on argument `arg` and on tolerance
-%% settings `tol`.  If `arg` is a scalar, the result is given by:
-%%
-%%    val = max(0.0, atol, rtol*abs(arg));
-%%
-%% otherwise, `arg` should be an array and the result is given by:
-%%
-%%    val = max(0.0, atol, rtol*optm_norm2(arg));
-%%
-%% The absolute and relative tolerances settings `atol` and `rtol` are
-%% specified by `tol = [atol, rtol]` or by `tol = rtol` and `atol = 0` is
-%% assumed.
-%%
-function val = tolerance(arg, tol)
-    if isscalar(tol)
-        val = 0.0;
-        rtol = tol;
-    else
-        val = max(0.0, tol(1));
-        rtol = tol(2);
-    end
-    if rtol > 0
-        if isscalar(arg)
-            val = max(val, rtol*abs(arg));
-        else
-            val = max(val, rtol*optm_norm2(arg));
-        end
     end
 end
