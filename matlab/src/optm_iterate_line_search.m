@@ -2,25 +2,25 @@
 %%
 %% This function shall be called as:
 %%
-%%     lnsrch = optm_iterate_line_search(lnsrch, phi(lnsrch.step))
+%%     lnsrch = optm_iterate_line_search(lnsrch, phi(lnsrch.step));
 %%
 %% to update line-search context `lnsrch` accounting for the function value
 %% `phi(lnsrch.step)` at the current step `lnsrch.step`.  To find the step
-%% along a search direction `d` starting at `x0` for the multi-variate
-%% function, `f(x)`, the function `phi` shall be defined as:
+%% along a search direction `d` starting at `x0` and for the multi-variate
+%% function `f(x)`, the function `phi` shall be defined as:
 %%
 %%     phi(alpha) = f(x0 + alpha*d)
 %%
 %% Upon return of `optm_iterate_line_search`, the line-search context `lnsrch`
 %% is updated so that `lnsrch.state` is normally one of:
 %%
-%%     1 - Line-search in progress.  The next step to try is `lnsrch.step`,
-%%         `optm_iterate_line_search` shall be called with the new function
-%%         value at `x0 + lnsrch.step*d`.
+%% 1: Line-search in progress.  The next step to try is `lnsrch.step`,
+%%    `optm_iterate_line_search` shall be called with the new function value at
+%%    `x0 + lnsrch.step*d`.
 %%
-%%     2 - Line-search has converged.  The step length `lnsrch.step` is left
-%%         unchanged and `x0 + lnsrch.step*d` is the new iterate of the
-%%         optimization method.
+%% 2: Line-search has converged.  The step length `lnsrch.step` is left
+%%    unchanged and `x0 + lnsrch.step*d` is the new iterate of the optimization
+%%    method.
 %%
 %% Upon creation of the line-search instance, `lnsrch.state` is set to 0.  A
 %% strictly negative value for `lnsrch.state` may be used to indicate an error.
@@ -46,7 +46,6 @@
 %%             lnsrch = optm_iterate_line_search(lnsrch, fx);
 %%         end
 %%     end
-%%
 function lnsrch = optm_iterate_line_search(lnsrch, f)
     finit = lnsrch.finit;
     ginit = lnsrch.ginit;
