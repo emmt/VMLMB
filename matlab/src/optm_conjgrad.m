@@ -100,24 +100,11 @@
 %%
 %% ## Returned Status
 %%
-%% The funtion retuns the solution `x` and a termination code which is one of:
-%%
-%% * `status = -1` if the left-hand-side matrix `A` is found to be not positive
-%%   definite;
-%%
-%% * `status = 0` if the maximum number of iterations have been reached;
-%%
-%% * `status = 1` if convergence occured because the function reduction
-%%   satisfies the criterion specified by `ftol`;
-%%
-%% * `status = 2` if convergence occured because the gradient norm satisfies
-%%   the criterion specified by `gtol`;
-%%
-%% * `status = 3` if convergence occured because the norm of the variation of
-%%   variables satisfies the criterion specified by `xtol`.
-%%
-%% The function `optm_conjgrad_reason` may be called to have a textual
-%% description of the meaning of the returned status.
+%% The function returns the solution `x` and a status code which indicates the
+%% reason of the algorithm termination.  A negative status indicates that some
+%% error occured, e.g. the left-hand-side matrix `A` or the preconditioner `M`
+%% are found to be not positive definite.  The function `optm_reason` may be
+%% called to have a textual description of the meaning of the returned status.
 function [x, status] = optm_conjgrad(A, b, x, varargin)
 
     %% Default settings (all absolute tolerances set to zero).
@@ -237,15 +224,15 @@ function [x, status] = optm_conjgrad(A, b, x, varargin)
             if verbose
                 printf("%s\n", "# Convergence in the gradient norm.");
             end
-            status = 2; %% G_TEST_SATISFIED
-            return
+            status = optm_status("GTEST_SATISFIED");
+            break
         end
         if k >= maxiter
             if verbose
                 printf("%s\n", "# Too many iteration(s).");
             end
-            status = 0; %% TOO_MANY_ITERATIONS
-            return
+            status = optm_status("TOO_MANY_ITERATIONS");
+            break
         end
 
         %% Compute search direction.
@@ -265,8 +252,8 @@ function [x, status] = optm_conjgrad(A, b, x, varargin)
             if verbose
                 printf("%s\n", "# Operator is not positive definite.");
             end
-            status = -1; %% NOT_POSITIVE_DEFINITE
-            return
+            status = optm_status("NOT_POSITIVE_DEFINITE");
+            break
         end
         alpha = rho/gamma;
 
@@ -279,20 +266,24 @@ function [x, status] = optm_conjgrad(A, b, x, varargin)
             if verbose
                 printf("%s\n", "# Convergence in the function reduction.");
             end
-            status = 1; %% F_TEST_SATISFIED
-            return
+            status = optm_status("FTEST_SATISFIED");
+            break
         end
         if xtest && alpha*optm_norm2(p) <= tolerance(x, xtol)
             %% Normal convergence in the variables.
             if verbose
                 printf("%s\n", "# Convergence in the variables.");
             end
-            status = 3; %% X_TEST_SATISFIED
-            return
+            status = optm_status("XTEST_SATISFIED");
+            break
         end
 
         %% Increment iteration number.
         k += 1;
+    end
+    if status < 0 && nargout < 2
+        %% An error occured while the caller does not retrieve the status.
+        error(optm_reason(status))
     end
 end
 
