@@ -3,8 +3,8 @@
 %% runs the (preconditioned) linear conjugate gradient algorithm to solve the
 %% system of equations `A*x = b` in `x`.
 %%
-%% Argument `x0` specifies the initial solution.  If `x0` is an empty array
-%% `[]`, `x` is initially an array of zeros.
+%% Argument `x0` specifies the initial solution.  If `x0` is an empty array,
+%% i.e. `[]`, `x` is initially an array of zeros.
 %%
 %% Argument `A` implements the *left-hand-side (LHS) matrix* of the equations.
 %% It may be a function name or handle and is called as `A(x)` to compute the
@@ -118,7 +118,6 @@
 %%
 %% The function `optm_conjgrad_reason` may be called to have a textual
 %% description of the meaning of the returned status.
-%%
 function [x, status] = optm_conjgrad(A, b, x, varargin)
 
     %% Default settings (all absolute tolerances set to zero).
@@ -167,6 +166,9 @@ function [x, status] = optm_conjgrad(A, b, x, varargin)
     %% Starting solution.
     if nargin < 3 || isempty(x)
         x = zeros(size(b));
+        x_is_zero = true;
+    else
+        x_is_zero = (optm_norm2(x) == 0.0);
     end
 
     %% Initialize local variables.
@@ -187,12 +189,13 @@ function [x, status] = optm_conjgrad(A, b, x, varargin)
         %% Compute residuals and their squared norm.
         if restarting
             %% Compute residuals.
-            if k > 0 || optm_norm2(x) != 0
-                %% Compute r = b - A*x.
-                r = b - A(x);
-            else
+            if x_is_zero
                 %% Spare applying A since x = 0.
                 r = b;
+                x_is_zero = false;
+            else
+                %% Compute r = b - A*x.
+                r = b - A(x);
             end
         else
             %% Update residuals.
