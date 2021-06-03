@@ -24,7 +24,7 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
     fmin = NaN;
     delta = NaN;
     epsilon = 0.0;
-    gamma = NaN;
+    lambda = NaN;
     blmvm = false;
     if mod(length(varargin), 2) != 0
         error("parameters must be specified as pairs of names and values");
@@ -59,8 +59,8 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
                 delta = val;
             case "epsilon"
                 epsilon = val;
-            case "gamma"
-                gamma = val;
+            case "lambda"
+                lambda = val;
             case "blmvm"
                 blmvm = (val != 0);
             otherwise
@@ -276,18 +276,25 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
                         end
                     end
                     if alpha <= 0
+                        %% The direction computed using the L-BFGS
+                        %% approximation failed to be a sufficient descent
+                        %% direction.  Take the steepest feasible descent
+                        %% direction.
                         d = -g;
                     end
                 end
             else
                 %% No L-BFGS approximation is available yet, will take the steepest
-                %% descent direction.
+                %% feasible descent direction.
                 d = -g;
                 alpha = 0;
             end
             if alpha <= 0
-                %% Find a suitable step size along the steepest descent direction.
-                alpha = optm_steepest_descent_step(x, gnorm, f, fmin, delta, gamma);
+                %% Find a suitable step size along the steepest feasible
+                %% descent direction `d`.  Note that gnorm, the Euclidean norm
+                %% of the (projected) gradient, is also that of `d`.
+                alpha = optm_steepest_descent_step(x, gnorm, f, fmin, ...
+                                                   delta, lambda);
             end
             stage = 1; % first trial along search direction
         end
