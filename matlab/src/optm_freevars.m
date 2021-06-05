@@ -12,7 +12,7 @@
 %% and that the variables are feasible, in other words that `xmin ≤ x ≤ xmax`
 %% holds.
 %%
-%% See also `optm_clamp`.
+%% See also `optm_clamp` and `optm_line_search_limits`.
 function msk = optm_freevars(x, xmin, xmax, g)
     if nargin != 4
         print_usage;
