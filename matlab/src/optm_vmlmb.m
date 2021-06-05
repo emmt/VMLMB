@@ -250,15 +250,16 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
                 pg0 = pg;
             end
             if lbfgs.mp > 0
-                %% Use L-BFGS approximation to compute a search direction and check
-                %% that it is an acceptable descent direction.
+                %% Use L-BFGS approximation to compute a search direction and
+                %% check that it is an acceptable descent direction.
                 [alpha, d] = optm_apply_lbfgs(lbfgs, -g, freevars);
                 if alpha > 0
                     %% Some valid (s,y) pairs were available to apply the
                     %% L-BFGS approximation.
                     dg = optm_inner(d, g);
                     if dg >= 0
-                        %% L-BFGS approximation does not yield a descent direction.
+                        %% L-BFGS approximation does not yield a descent
+                        %% direction.
                         if ~bounded
                             if throwerrors
                                 error("L-BFGS approximation is not positive definite");
@@ -284,8 +285,8 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
                     end
                 end
             else
-                %% No L-BFGS approximation is available yet, will take the steepest
-                %% feasible descent direction.
+                %% No L-BFGS approximation is available yet, will take the
+                %% steepest feasible descent direction.
                 d = -g;
                 alpha = 0;
             end
@@ -297,6 +298,13 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
                                                    delta, lambda);
             end
             stage = 1; % first trial along search direction
+            if bounded
+                %% Safeguard the step to avoid searching in a region where
+                %% all bounds are overreached.
+                [amin, amax] = optm_line_search_limits(x0, lower, upper, ...
+                                                       d, alpha);
+                alpha = min(alpha, amax);
+            end
         end
         %% Compute next iterate.
         if alpha == 1
