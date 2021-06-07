@@ -1,14 +1,138 @@
 %% optm_vmlmb - Apply VMLMB algorithm.
 %%
-%%     [x, f, g, status] = optm_vmlmb(fg, x, ...);
+%%     [x, f, g, status] = optm_vmlmb(fg, x0, ...);
 %%
-%% runs VMLMB (for Variable Metric Limited Memory with Bounds) algorithm
-%% to minimize a given smooth objective function, possibly with separable
-%% bounds constraints.
+%% Apply VMLMB algorithm to minimize a multi-variate differentiable objective
+%% function possibly under separble bound constraints.  VMLMB is a quasi-Newton
+%% method ("VM" is for "Variable Metric") with low memory requirements ("LM" is
+%% for "Limited Memory") and which can optionally take into account separable
+%% bound constraints (the final "B") on the variables.  To determine efficient
+%% search directions, VMLMB approximates the Hessian of the objective function
+%% by a model, called L-BFGS for short, which is a limited memory version of
+%% the one assumed in Broyden-Fletcher-Goldfarb-Shanno algorithm.  Hence VMLMB
+%% is well suited to solving optimization problems with a very large number of
+%% variables possibly with bound constraints.
+%%
+%% The method has two required arguments: `fg` the function to call to compute
+%% the objective function and its gradient and `x0` the initial variables
+%% (VMLMB is an iterative method).  The initial variables may be an array of
+%% any dimensions.
+%%
+%% The method returns `x` the best solution found during iterations, `f` and
+%% `g` the value and the gradient of the objective at `x` and `status` an
+%% integer code indicating the reason of the termination of the algorithm (see
+%% `optm_reason`).
+%%
+%% The function `fg` shall be implemented as follows:
+%%
+%%     function [fx, gx] = fg(x)
+%%         fx = ...; // value of the objective function at `x`
+%%         gx = ...: // gradient of the objective function at `x`
+%%     end
+%%
+%% All other settings are specified by keywords:
+%%
+%% - Keywords `upper` and `lower` are to specify a lower and/or an upper bounds
+%%   for the variables.  If unspecified or set to an empty array, a given bound
+%%   is considered as unlimited.  Bounds must be conformable with the
+%%   variables.
+%%
+%% - Keyword `mem` specifies the memory used by the algorithm, that is the
+%%   number of previous steps memorized to approximate the Hessian of the
+%%   objective function.  With `mem=0`, the algorithm
+%%   behaves as a steepest descent method.  The default is `mem=5`.
+%%
+%% - Keywords `ftol`, `gtol` and `xtol` specify tolerances for deciding the
+%%   convergence of the algorithm.
+%%
+%%   Convergence in the function occurs if one of the following conditions
+%%   hold:
+%%
+%%       f ≤ fatol
+%%       |f - fp| ≤ frtol⋅max(|f|, |fp|)
+%%
+%%   where `f` and `fp` are the values of the objective function at the current
+%%   and previous iterates.  In these conditions, `fatol` and `frtol` are
+%%   absolute and relative tolerances specified by `ftol` which can be
+%%   `ftol=[fatol,frtol]` or `ftol=frtol` and assume that `fatol=-Inf`.  The
+%%   default is `ftol=1e-8`.
+%%
+%%   Convergence in the gradient occurs if the following condition holds:
+%%
+%%       ‖g‖ ≤ max(0, gatol, grtol⋅‖g0‖)
+%%
+%%   where `‖g‖` is the Euclidean norm of the projected gradient, `g0` is the
+%%   projected gradient at the initial solution.  In this condition, `gatol`
+%%   and `grtol` are absolute and relative gradient tolerances specified by
+%%   `gtol` which can be `gtol=[gatol,grtol]` or `gtol=grtol` and assume that
+%%   `gatol=0`.  The default is `gtol=1e-5`.
+%%
+%%   Convergence in the variables occurs if the following condition holds:
+%%
+%%       ‖x - xp‖ ≤ max(0, xatol, xrtol*‖x‖)
+%%
+%%   where `x` and `xp` are the current and previous variables.  In this
+%%   condition, `xatol` and `xrtol` are absolute and relative tolerances
+%%   specified by `xtol` which can be `xtol=[fatol,frtol]` or `xtol=xrtol` and
+%%   assume that `xatol=0`.  The default is `xtol=1e-6`.
+%%
+%% - Keywords `maxiter` and `maxeval` are to specify a maximum number of
+%%   algorithm iterations or or evaluations of the objective function
+%%   implemented by `fg`.  By default, these are unlimited.
+%%
+%% - Keyword `lnsrch` is to specify line-search settings different than the
+%%   default (see `optm_new_line_search`).
+%%
+%% - Keyword `fmin` is to specify an estimation of the minimum possible value
+%%   of the objective function.  This setting may be used to determine the step
+%%   length along the steepest descent.
+%%
+%% - Keyword `delta` specifies a small size relative to the variables.  This
+%%   setting may be used to determine the step length along the steepest
+%%   descent.
+%%
+%% - Keyword `lambda` specifies an estimate of the magnitude of the eigenvalues
+%%   of the Hessaian of the objective function.  This setting may be used to
+%%   determine the step length along the steepest descent.
+%%
+%% - Keyword `epsilon` specifies a threshold for a sufficient descent
+%%   condition.  If `epsilon > 0`, then a search direction `d` computed by the
+%%   L-BFGS approximation is considered as acceptable if:
+%%
+%%       ⟨d,g⟩ ≤ -epsilon⋅‖d‖⋅‖g‖
+%%
+%%   where `g` denotes the projected gradient of the objective function (which
+%%   is just the gradient in unconstrained case).  Otherwise, the condition
+%%   writes `⟨d,g⟩ < 0`.  The default is `epsilon = 0` so only the latter
+%%   condition is checked.
+%%
+%% - Keyword `blmvm` (false by default) specifies whether to use BLMVM trick to
+%%   account for the bound constraints in the L-BFGS model of the Hessian.  If
+%%   `blmvm` is set true, the overhead of the algorithm may be reduced, but the
+%%   L-BFGS model of the Hessian is more likely to be inaccurate causing the
+%%   algorithm to choose the steepest descent direction more often.
+%%
+%% - Keyword `verbose` specifies whether to print information at each
+%%   iteration.
+%%
+%% - Keyword `throwerrors` (true by default), specifies whether to call `error`
+%%   in case of errors instead or returning a `status` indicating the problem.
+%%   Note that early termination due to limits set on the number of iterations
+%%   or of evaluations of the objective function are not considereed as an
+%%   error.
+
 function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
     if nargin < 2
         print_usage;
     end
+
+    %% Constants.  Calling inf, nan, true or false takes too much time (2.1µs
+    %% instead of 0.2µs if stored in a variable), so use local variables
+    %% (shadowing the functions) to pay the price once.
+    Inf = inf;
+    NaN = nan;
+    True = true;
+    False = false;
 
     %% Parse settings.
     lower = [];
@@ -20,12 +144,12 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
     gtol = 1e-5;
     xtol = 1e-6;
     lnsrch = [];
-    verbose = false;
+    verbose = False;
     fmin = NaN;
     delta = NaN;
     epsilon = 0.0;
     lambda = NaN;
-    blmvm = false;
+    blmvm = False;
     if mod(length(varargin), 2) != 0
         error("parameters must be specified as pairs of names and values");
     end
@@ -67,13 +191,57 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
                 error("invalid parameter name '%s'", key);
         end
     end
+    if isscalar(ftol)
+        fatol = -Inf;
+        frtol = ftol;
+    else
+        fatol = ftol(1);
+        frtol = ftol(2);
+    end
+    if isscalar(gtol)
+        gatol = 0.0;
+        grtol = gtol;
+    else
+        gatol = gtol(1);
+        grtol = gtol(2);
+    end
+    if isscalar(xtol)
+        xatol = 0.0;
+        xrtol = xtol;
+    else
+        xatol = xtol(1);
+        xrtol = xtol(2);
+    end
+
+    %% Bound constraints.  For faster code, unlimited bounds are preferentially
+    %% represented by empty arrays.
+    if ~isempty(lower) && all(lower(:) == -Inf)
+        lower = [];
+    end
+    if ~isempty(upper) && all(upper(:) == +Inf)
+        upper = [];
+    end
+    bounded = (~isempty(lower) || ~isempty(upper));
+    if ~bounded
+        blmvm = False; % no needs to use BLMVM trick in the unconstrained case
+    end
 
     %% If the caller does not retrieve the status argument, failures are
     %% reported by throwing an error.
     throwerrors = (nargout < 4);
-    status = 0;
 
     %% Other initialization.
+    alpha = 0.0;   % step length
+    amin = 0.0;    % first step length threshold
+    amax = Inf;    % last step length threshold
+    evals = 0;     % number of calls to fg
+    iters = 0;     % number of iterations
+    projs = 0;     % number of projections onto the feasible set
+    status = 0;    % algorithm status is zero until termination.
+    best_f = Inf;  % best function value so far
+    best_g = [];   % corresponding gradient
+    best_x = [];   % corresponding variables
+    freevars = []; % subset of free variables not yet known
     if isempty(lnsrch)
         lnsrch = optm_new_line_search();
     end
@@ -81,21 +249,10 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
         fg = str2func(fg);
     end
     lbfgs = optm_new_lbfgs(mem);
-    bounded = (~isempty(lower) || ~isempty(upper));
-    if ~bounded
-        %% No needs to use BLMVM trick in the inconstrained case.
-        blmvm = false;
-    end
-    alpha = 0.0;   % step size
-    evals = 0;     % number of calls to fg
-    iters = 0;     % number of iterations
-    projs = 0;     % number of projections onto the feasible set
-    status = 0;    % algorithm status is zero until termination.
-    freevars = []; % subset of free variables not yet known
-    print_now = false;
     if verbose
         t0 = time;
     end
+    print_now = False;
 
     %% Algorithm stage is one of:
     %% 0 = initial;
@@ -104,7 +261,7 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
     %% 3 = line-search has converged.
     stage = 0;
 
-    while true
+    while True
         if bounded && stage < 2
             %% Make the variables feasible.
             x = optm_clamp(x, lower, upper);
@@ -169,7 +326,7 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
             %% Check for algorithm convergence or termination.
             if evals == 1
                 %% Compute value for testing the convergence in the gradient.
-                gtest = optm_tolerance(gnorm, gtol);
+                gtest = max(max(0.0, gatol), grtol*gnorm);
             end
             if status == 0 && gnorm <= gtest
                 %% Convergence in gradient
@@ -178,7 +335,7 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
             if stage == 3
                 if status == 0
                     %% Check convergence in relative function reduction.
-                    if f == f0 || (ftol > 0 && abs(f - f0) <= ftol*max(abs(f), abs(f0)))
+                    if f <= fatol || abs(f - f0) <= max(0.0, frtol*max(abs(f), abs(f0)))
                         status = optm_status("FTEST_SATISFIED");
                     end
                 end
@@ -188,7 +345,7 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
                 if status == 0
                     %% Check convergence in variables.
                     dnorm = optm_norm2(d);
-                    if dnorm <= 0 || (xtol > 0 && dnorm <= xtol*optm_norm2(x))
+                    if dnorm <= max(0.0, xatol) || (xrtol > 0 && dnorm <= xrtol*optm_norm2(x))
                         status = optm_status("XTEST_SATISFIED");
                     end
                 end
