@@ -14,7 +14,7 @@
 %%
 %% See also `optm_clamp` and `optm_line_search_limits`.
 function msk = optm_freevars(x, xmin, xmax, g)
-    if nargin != 4
+    if nargin ~= 4
         print_usage;
     end
     if isempty(xmin)

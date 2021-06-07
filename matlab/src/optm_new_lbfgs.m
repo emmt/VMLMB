@@ -5,7 +5,8 @@
 %%
 %% Also see `optm_reset_lbfgs`, `optm_update_lbfgs` and `optm_apply_lbfgs`.
 function lbfgs = optm_new_lbfgs(m)
-    if nargin != 1
+    time = @() 86400000*now();
+    if nargin ~= 1
         print_usage;
     end
     if m < 0

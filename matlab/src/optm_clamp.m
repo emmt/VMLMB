@@ -8,7 +8,7 @@
 %%
 %% See also `optm_freevars` and `optm_line_search_limits`.
 function x = optm_clamp(x, xmin, xmax)
-    if nargin != 3
+    if nargin ~= 3
         print_usage;
     end
     if ~isempty(xmin)

@@ -19,12 +19,12 @@
 %%   Hessian of the objective function.
 %%
 function alpha = optm_steepest_descent_step(x, d, fx, fmin, delta, lambda)
-    if nargin != 6
+    if nargin ~= 6
         print_usage;
     end
-    # Note that we rely on the behavior of NaN's (in particular for
-    # comparisons) to simplify the checking of the validity of the different
-    # cases.
+    % Note that we rely on the behavior of NaN's (in particular for
+    % comparisons) to simplify the checking of the validity of the different
+    % cases.
     if fx > fmin
         %% For a quadratic objective function, the minimum is such that:
         %%

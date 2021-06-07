@@ -8,7 +8,7 @@
 %%
 %% Also see `optm_new_lbfgs`, `optm_reset_lbfgs`, and `optm_apply_lbfgs`.
 function [lbfgs, accept] = optm_update_lbfgs(lbfgs, s, y)
-    if nargin != 3
+    if nargin ~= 3
         print_usage;
     end
     m = lbfgs.m;

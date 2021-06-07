@@ -47,17 +47,17 @@ function [stp, d] = optm_apply_lbfgs(lbfgs, d, sel)
             for j = 1:mp
                 i = mod((off - j), m) + 1;
                 alpha_i = optm_inner(d, S{i})/rho(i);
-                d -= alpha_i*(Y{i});
+                d = d - alpha_i*(Y{i});
                 alpha(i) = alpha_i;
             end
-            if gamma != 1
-                d *= gamma;
+            if gamma ~= 1
+                d = d * gamma;
             end
             for j = mp:-1:1
                 i = mod((off - j), m) + 1;
                 alpha_i = alpha(i);
                 beta = optm_inner(d, Y{i})/rho(i);
-                d += (alpha_i - beta)*(S{i});
+                d = d + (alpha_i - beta)*(S{i});
             end
         end
     else
@@ -79,26 +79,26 @@ function [stp, d] = optm_apply_lbfgs(lbfgs, d, sel)
                     gamma = rho_i/optm_inner(y_i, y_i);
                 end
                 alpha_i = optm_inner(z, s_i)/rho_i;
-                z -= alpha_i*y_i;
+                z = z - alpha_i*y_i;
                 alpha(i) = alpha_i;
                 rho(i) = rho_i;
                 last_i = i;
             end
         end
-        if gamma > 0 && gamma != 1
-            z *= gamma;
+        if gamma > 0 && gamma ~= 1
+            z = z * gamma;
         end
         for j = mp:-1:1
             i = mod((off - j), m) + 1;
             rho_i = rho(i);
             if rho_i > 0
-                if (i != last_i)
+                if (i ~= last_i)
                     s_i = S{i}(sel);
                     y_i = Y{i}(sel);
                 end
                 alpha_i = alpha(i);
                 beta = optm_inner(z, y_i)/rho_i;
-                z += (alpha_i - beta)*s_i;
+                z = z + (alpha_i - beta)*s_i;
                 last_i = i;
             end
         end

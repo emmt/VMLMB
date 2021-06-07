@@ -40,7 +40,7 @@
 %%
 %% See documentation of `optm_iterate_line_search` for a complete usage example.
 function lnsrch = optm_new_line_search(varargin)
-    if mod(length(varargin), 2) != 0
+    if mod(length(varargin), 2) ~= 0
         error("parameters must be specified as pairs of names and values")
     end
     lnsrch.ftol = 0.01;

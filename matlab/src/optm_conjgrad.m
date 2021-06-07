@@ -116,7 +116,7 @@ function [x, status] = optm_conjgrad(A, b, x, varargin)
     gtol = 1e-5;
     xtol = 1e-6;
     M = [];
-    if mod(length(varargin), 2) != 0
+    if mod(length(varargin), 2) ~= 0
         error("parameters must be specified as pairs of names and values");
     end
     for i = 1:2:length(varargin)
@@ -159,6 +159,7 @@ function [x, status] = optm_conjgrad(A, b, x, varargin)
     end
 
     %% Initialize local variables.
+    time = @() 86400000*now();
     rho = 0.0;
     phi = 0.0;
     phimax = 0.0;
@@ -186,7 +187,7 @@ function [x, status] = optm_conjgrad(A, b, x, varargin)
             end
         else
             %% Update residuals.
-            r -= alpha*q;
+            r = r - alpha*q;
         end
         if precond
             %% Apply preconditioner.
@@ -203,33 +204,33 @@ function [x, status] = optm_conjgrad(A, b, x, varargin)
             t = (time() - t0)*1E3; %% elapsed time in ms
             if precond
                 if k == 0
-                    printf("%s\n%s\n", ...
+                    fprintf("%s\n%s\n", ...
                           "# Iter.   Time (ms)     Δf(x)       ‖∇f(x)‖     ‖∇f(x)‖_M", ...
                           "# ---------------------------------------------------------");
                 end
-                printf("%7d %11.3f %12.4e %12.4e %12.4e\n", ...
+                fprintf("%7d %11.3f %12.4e %12.4e %12.4e\n", ...
                        k, t, phi, optm_norm2(r), sqrt(rho));
             else
                 if k == 0
-                    printf("%s\n%s\n", ...
+                    fprintf("%s\n%s\n", ...
                            "# Iter.   Time (ms)     Δf(x)       ‖∇f(x)‖", ...
                            "# --------------------------------------------");
                 end
-                printf("%7d %11.3f %12.4e %12.4e\n", ...
+                fprintf("%7d %11.3f %12.4e %12.4e\n", ...
                        k, t, phi, sqrt(rho));
             end
         end
         if sqrt(rho) <= gtest
             %% Normal convergence in the gradient norm.
             if verbose
-                printf("%s\n", "# Convergence in the gradient norm.");
+                fprintf("%s\n", "# Convergence in the gradient norm.");
             end
             status = optm_status("GTEST_SATISFIED");
             break
         end
         if k >= maxiter
             if verbose
-                printf("%s\n", "# Too many iteration(s).");
+                fprintf("%s\n", "# Too many iteration(s).");
             end
             status = optm_status("TOO_MANY_ITERATIONS");
             break
@@ -250,7 +251,7 @@ function [x, status] = optm_conjgrad(A, b, x, varargin)
         gamma = optm_inner(p, q);
         if ~(gamma > 0)
             if verbose
-                printf("%s\n", "# Operator is not positive definite.");
+                fprintf("%s\n", "# Operator is not positive definite.");
             end
             status = optm_status("NOT_POSITIVE_DEFINITE");
             break
@@ -258,13 +259,13 @@ function [x, status] = optm_conjgrad(A, b, x, varargin)
         alpha = rho/gamma;
 
         %% Update variables and check for convergence.
-        x += alpha*p;
+        x = x+ alpha*p;
         phi = alpha*rho/2;  %% phi = f(x_{k}) - f(x_{k+1}) ≥ 0
         phimax = max(phi, phimax);
         if phi <= optm_tolerance(phimax, ftol)
             %% Normal convergence in the function reduction.
             if verbose
-                printf("%s\n", "# Convergence in the function reduction.");
+                fprintf("%s\n", "# Convergence in the function reduction.");
             end
             status = optm_status("FTEST_SATISFIED");
             break
@@ -272,14 +273,14 @@ function [x, status] = optm_conjgrad(A, b, x, varargin)
         if xtest && alpha*optm_norm2(p) <= optm_tolerance(x, xtol)
             %% Normal convergence in the variables.
             if verbose
-                printf("%s\n", "# Convergence in the variables.");
+                fprintf("%s\n", "# Convergence in the variables.");
             end
             status = optm_status("XTEST_SATISFIED");
             break
         end
 
         %% Increment iteration number.
-        k += 1;
+        k = k+ 1;
     end
     if status < 0 && nargout < 2
         %% An error occured while the caller does not retrieve the status.

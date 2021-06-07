@@ -135,6 +135,7 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
     False = false;
 
     %% Parse settings.
+    time = @() 86400000*now();
     lower = [];
     upper = [];
     mem = 5;
@@ -150,7 +151,7 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
     epsilon = 0.0;
     lambda = NaN;
     blmvm = False;
-    if mod(length(varargin), 2) != 0
+    if mod(length(varargin), 2) ~= 0
         error("parameters must be specified as pairs of names and values");
     end
     for i = 1:2:length(varargin)
@@ -186,7 +187,7 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
             case "lambda"
                 lambda = val;
             case "blmvm"
-                blmvm = (val != 0);
+                blmvm = (val ~= 0);
             otherwise
                 error("invalid parameter name '%s'", key);
         end
@@ -250,7 +251,7 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
     end
     lbfgs = optm_new_lbfgs(mem);
     if verbose
-        t0 = time;
+        t0 = time();
     end
     print_now = False;
 
@@ -265,11 +266,11 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
         if bounded && stage < 2
             %% Make the variables feasible.
             x = optm_clamp(x, lower, upper);
-            projs += 1;
+            projs = projs + 1;
         end
         %% Compute objective function and its gradient.
         [f, g] = fg(x);
-        evals += 1;
+        evals = evals + 1;
         if evals == 1 || f < best_f
             %% Save best solution so far.
             best_f = f;
@@ -282,7 +283,7 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
             dg0 = optm_inner(d, g0);
             alpha = 1.0;
             lnsrch = optm_start_line_search(lnsrch, f0, dg0, alpha);
-            if lnsrch.stage != 1
+            if lnsrch.stage ~= 1
                 error("something is wrong!");
             end
             stage = 2;
@@ -293,7 +294,7 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
             if lnsrch.stage == 2
                 %% Line-search has converged, `x` is the next iterate.
                 stage = 3;
-                iters += 1;
+                iters = iters + 1;
             elseif lnsrch.stage == 1
                 alpha = lnsrch.step;
             else
@@ -339,7 +340,7 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
                         status = optm_status("FTEST_SATISFIED");
                     end
                 end
-                if alpha != 1.0
+                if alpha ~= 1.0
                     d = x - x0; % recompute effective step
                 end
                 if status == 0
@@ -358,7 +359,7 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
         if status == 0 && evals >= maxeval
             status = optm_status("TOO_MANY_EVALUATIONS");
         end
-        if verbose && status != 0 && ~print_now && best_f < f0
+        if verbose && status ~= 0 && ~print_now && best_f < f0
             %% Verbose mode and abnormal termination but some progress have
             %% been made since the start of the line-search.  Restore best
             %% solution so far, pretend that one more iteration has been
@@ -369,23 +370,23 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
             if bounded
                 gnorm = optm_norm2(freevars.*g);
             end
-            iters += 1;
+            iters = iters + 1;
             print_now = verbose;
         end
         if print_now
-            t = (time - t0)*1E3; % elapsed milliseconds
+            t = (time() - t0)*1E3; % elapsed milliseconds
             if iters < 1
-                printf("%s%s\n%s%s\n", ...
+                fprintf("%s%s\n%s%s\n", ...
                        "# Iter.   Time (ms)   Eval.   Proj. ", ...
                        "       Obj. Func.           Grad.       Step", ...
                        "# ----------------------------------", ...
                        "-----------------------------------------------");
             end
-            printf("%7d %11.3f %7d %7d %23.15e %11.3e %11.3e\n", ...
+            fprintf("%7d %11.3f %7d %7d %23.15e %11.3e %11.3e\n", ...
                    iters, t, evals, projs, f, gnorm, alpha);
             print_now = ~print_now;
         end
-        if status != 0
+        if status ~= 0
             %% Algorithm stops here.
             break
         end

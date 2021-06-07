@@ -31,7 +31,7 @@ function [amin, amax] = optm_line_search_limits(x0, xmin, xmax, d, dir)
     if nargin < 4 || nargin > 5
         print_usage;
     end
-    Inf = Inf; % calling Inf takes too much time (2.1µs instead of 0.2µs if
+%    Inf = Inf; % calling Inf takes too much time (2.1µs instead of 0.2µs if
                % stored in a variable), so use a local variable shadowing the
                % function to pay the price once
     %% Quick return if unconstrained.
@@ -66,12 +66,12 @@ function [amin, amax] = optm_line_search_limits(x0, xmin, xmax, d, dir)
         if ascent
             if max(d) > 0
                 i = d > 0;
-                a = x0 .- xmin;
+                a = x0 - xmin;
             end
         else
             if min(d) < 0
                 i = d < 0;
-                a = xmin .- x0;
+                a = xmin - x0;
             end
         end
         if ~isempty(a)
@@ -98,12 +98,12 @@ function [amin, amax] = optm_line_search_limits(x0, xmin, xmax, d, dir)
         if ascent
             if min(d) < 0
                 i = d < 0;
-                a = x0 .- xmax;
+                a = x0 - xmax;
             end
         else
             if max(d) > 0
                 i = d > 0;
-                a = xmax .- x0;
+                a = xmax - x0;
             end
         end
         if ~isempty(a)
