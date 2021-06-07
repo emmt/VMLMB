@@ -20,7 +20,18 @@ The objective of this repository is to provide algorithms that:
 * can be easily modified.
 
 
-# References
+## Contents
+
+The repository is organized as follows:
+
+- Directory [`data`](./data) contains data for tests and examples.
+
+- Directory [`matlab`](./matlab) contains a pure Matlab/Octave version of `VMLMB`.
+
+- Directory [`yorick`](./yorick) contains a pure Yorick version of `VMLMB`.
+
+
+## References
 
 * É. Thiébaut, "*Optimization issues in blind deconvolution algorithms*," in
   Astronomical Data Analysis II, SPIE Proc. **4847**, 174-183 (2002).
