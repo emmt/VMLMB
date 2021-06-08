@@ -702,55 +702,54 @@ func optm_update_lbfgs(lbfgs, s, y)
     return accept;
 }
 
-local optm_lbfgs_status;
-func optm_apply_lbfgs(lbfgs, d, sel)
-/* DOCUMENT d = optm_apply_lbfgs(lbfgs, g);
-         or d = optm_apply_lbfgs(lbfgs, g, sel);
+func optm_apply_lbfgs(lbfgs, d, &scaled, freevars)
+/* DOCUMENT d = optm_apply_lbfgs(lbfgs, g, scaled);
+         or d = optm_apply_lbfgs(lbfgs, g, scaled, freevars);
 
       Apply L-BFGS approximation of inverse Hessian to the "vector" `g`.
       Argument `lbfgs` is the structure storing the L-BFGS data.
 
-      Optional argument `sel` is to restrict the L-BFGS approximation a subset
-      of "free variables".  Argument `sel` can be an array of booleans (of type
+      Optional argument `freevars` is to restrict the L-BFGS approximation a subset
+      of "free variables".  Argument `freevars` can be an array of booleans (of type
       `int` in Yorick) of same dimensions as `d` and equal to zero where
-      variables are blocked and to non-zero elsewhere.  Argument `sel` can also
+      variables are blocked and to non-zero elsewhere.  Argument `freevars` can also
       be a vector of the indices (of type `long` in Yorick) of free variables.
 
-      On return, extern variable `optm_lbfgs_status` indicates whether any
-      curvature information was taken into account.  If `optm_lbfgs_status` is
-      false, it means that the result `d` is identical to `g` except that
-      `d(i)=0` if the `i`-th variable is blocked according to `sel`.
+      On return, output variable `scaled` indicates whether any curvature
+      information was taken into account.  If `scaled` is false, it means that
+      the result `d` is identical to `g` except that `d(i)=0` if the `i`-th
+      variable is blocked according to `freevars`.
 
    SEE ALSO: optm_new_lbfgs, optm_reset_lbfgs, optm_update_lbfgs, optm_inner.
  */
 {
     // Variables.
-    extern optm_lbfgs_status;
-    local S, Y, alpha, rho, gamma;
+    local S, Y, alpha, rho, gamma, idx;
 
     // Determine the number of variables and of free variables.
     nvars = numberof(d);
-    if (is_void(sel)) {
+    if (is_void(freevars)) {
         // All variables are free.
         nfree = nvars;
     } else {
-        T = structof(sel);
-        if (T == int && optm_same_dims(sel, d)) {
-            // Assume `sel` is boolean mask indicating the free variables.
-            if (allof(sel)) {
+        T = structof(freevars);
+        if (T == int && optm_same_dims(freevars, d)) {
+            // Assume `freevars` is a boolean mask indicating the free variables.
+            if (allof(freevars)) {
                 nfree = nvars;
             } else {
-                sel = where(sel);
-                nfree = numberof(sel);
+                idx = where(freevars);
+                nfree = numberof(idx);
             }
-        } else if (T == long && is_vector(sel)) {
-            // Assume `sel` is the list of indices of free variables.
-            nfree = numberof(sel);
-        } else if (T == [] && sel == where(0)) {
+        } else if (T == long && is_vector(freevars)) {
+            // Assume `freevars` is the list of indices of free variables.
+            eq_nocopy, idx, freevars;
+            nfree = numberof(idx);
+        } else if (T == [] && freevars == (idx = where(0))) {
             // Empty selection: all variables are blocked.
             nfree = 0;
         } else {
-            error, "invalid `sel` argument (expecting a boolean mask or a list of indices)";
+            error, "invalid `freevars` argument (expecting a boolean mask or a list of indices)";
         }
     }
 
@@ -776,7 +775,7 @@ func optm_apply_lbfgs(lbfgs, d, sel)
             alpha(i) = alpha_i;
         }
         if (gamma > 0 && gamma != 1) {
-            d *= gamma;
+            d = gamma*unref(d);
         }
         for (j = mp; j >= 1; --j) {
             i = (off - j)%m + 1;
@@ -786,57 +785,51 @@ func optm_apply_lbfgs(lbfgs, d, sel)
         }
     } else {
         // L-BFGS recursion on a subset of free variables specified by a
-        // selection of indices.  FIXME: Since the set of free variables
-        // settles down, we can have a cache with the reduced L-BFGS storage.
+        // selection of indices.
+        local s_i, y_i, last_i;
         rho = array(double, m);
         gamma = 0.0;
         last_i = -1;
-        full_dims = dimsof(d);
-        d = d(sel); // restrict argument to the subset of free variables
+        z = d(idx); // restrict argument to the subset of free variables
         for (j = 1; j <= mp; ++j) {
             i = (off - j)%m + 1;
-            s_i = (*S(i))(sel);
-            y_i = (*Y(i))(sel);
+            s_i = (*S(i))(idx);
+            y_i = (*Y(i))(idx);
+            last_i = i;
             rho_i = optm_inner(s_i, y_i);
             if (rho_i > 0) {
                 if (gamma <= 0.0) {
                     gamma = rho_i/optm_inner(y_i, y_i);
                 }
-                alpha_i = optm_inner(d, s_i)/rho_i;
-                d -= alpha_i*y_i;
+                alpha_i = optm_inner(z, s_i)/rho_i;
+                z -= alpha_i*y_i;
                 alpha(i) = alpha_i;
                 rho(i) = rho_i;
-                last_i = i;
             }
         }
-        if (gamma > 0) {
-            optm_lbfgs_status = 33;
-            if (gamma != 1) {
-                d *= gamma;
-            }
+        if (gamma > 0 && gamma != 1) {
+            z = gamma*unref(z);
         }
         for (j = mp; j >= 1; --j) {
             i = (off - j)%m + 1;
             rho_i = rho(i);
             if (rho_i > 0) {
                 if (i != last_i) {
-                    s_i = (*S(i))(sel);
-                    y_i = (*Y(i))(sel);
+                    // Re-extract s and y for the free variables.
+                    s_i = (*S(i))(idx);
+                    y_i = (*Y(i))(idx);
+                    last_i = i;
                 }
-                alpha_i = alpha(i);
-                beta = optm_inner(d, y_i)/rho_i;
-                d += (alpha_i - beta)*s_i;
-                last_i = i;
+                beta = optm_inner(z, y_i)/rho_i;
+                z += (alpha(i) - beta)*s_i;
             }
         }
-        optm_lbfgs_status = gamma;
         s_i = []; // free memory
         y_i = []; // free memory
-        z = unref(d);
-        d = array(structof(z), full_dims);
-        d(sel) = z;
+        d = array(structof(z), dimsof(d));
+        d(idx) = z;
     }
-    optm_lbfgs_status = (gamma > 0);
+    scaled = (gamma > 0);
     return d;
 }
 
@@ -1364,9 +1357,9 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
             dir = 0;
             // Use L-BFGS approximation to compute a search direction and
             // check that it is an acceptable descent direction.
-            local optm_lbfgs_status;
-            d = optm_apply_lbfgs(lbfgs, -g, freevars);
-            if (! optm_lbfgs_status) {
+            local scaled;
+            d = optm_apply_lbfgs(lbfgs, -g, scaled, freevars);
+            if (!scaled) {
                 // No exploitable curvature information, `d` is the unscaled
                 // steepest feasible direction.
                 dir = 1;
