@@ -845,9 +845,9 @@ func optm_active_variables(x, xmin, xmax, g)
     }
 }
 
-func optm_line_search_limits(x0, xmin, xmax, d, dir)
-/* DOCUMENT [amin,amax] = optm_line_search_limits(x0, xmin, xmax, d);
-         or [amin,amax] = optm_line_search_limits(x0, xmin, xmax, d, dir);
+func optm_line_search_limits(&amin, &amax, x0, xmin, xmax, d, dir)
+/* DOCUMENT optm_line_search_limits, amin, amax, x0, xmin, xmax, d;
+         or optm_line_search_limits, amin, amax, x0, xmin, xmax, d, dir;
 
      Determine the limits `amin` and `amax` for the step length `alpha` in a
      line-search where iterates `x` are given by:
@@ -859,13 +859,13 @@ func optm_line_search_limits(x0, xmin, xmax, d, dir)
      empty) and where `±` is `-` if `dir` is specified and negative and `+`
      otherwise.
 
-     Returned value `amin` is the largest nonnegative step length such that if
-     alpha ≥ amax, then:
+     On return, output variable `amin` is set to the largest nonnegative step
+     length such that if `alpha ≤ amin`, then:
 
          proj(x0 ± alpha*d) = x0 ± alpha*d
 
-     Returned value `amax` is the least nonnegative step length such that if
-     alpha ≥ amax, then:
+     On return, output variable `amax` is set to the least nonnegative step
+     length such that if `alpha ≥ amax`, then:
 
          proj(x0 ± alpha*d) = proj(x0 ± amax*d)
 
@@ -880,18 +880,22 @@ func optm_line_search_limits(x0, xmin, xmax, d, dir)
  */
 {
     INF = OPTM_INFINITE; // for nicer code ;-)
-    if (is_void(xmin) && is_void(xmax)) {
-        // Quick return if unconstrained.
-        return [INF, INF];
-    }
-    ascent = (!is_void(dir) && dir < 0); // Is `d` an ascent direction?
+    no_lower = is_void(xmin);
+    no_upper = is_void(xmax);
     amin = INF;
+    if (no_lower && no_upper) {
+        // Quick return if unconstrained.
+        amax = INF;
+        return;
+    }
     amax = 0.0;
-    if (is_void(xmin)) {
+    ascent = (!is_void(dir) && dir < 0); // Is `d` an ascent direction?
+    if (no_lower) {
         if (ascent ? (max(d) > 0) : (min(d) < 0)) {
             amax = INF;
         }
     } else {
+        // Find step sizes to reach any lower bounds.
         i = a = [];
         if (ascent) {
             i = where(d > 0);
@@ -910,11 +914,13 @@ func optm_line_search_limits(x0, xmin, xmax, d, dir)
             amax = max(amax, max(a));
         }
     }
-    if (is_void(xmax)) {
+    if (no_upper) {
+        // No upper bound set.
         if (amax < INF && (ascent ? (min(d) < 0) : (max(d) > 0))) {
             amax = INF;
         }
     } else {
+        // Find step sizes to reach any upper bounds.
         a = i = [];
         if (ascent) {
             i = where(d < 0);
@@ -935,7 +941,6 @@ func optm_line_search_limits(x0, xmin, xmax, d, dir)
             }
         }
     }
-    return [amin, amax]
 }
 
 //-----------------------------------------------------------------------------
@@ -1326,8 +1331,7 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
                 dir = 2;
                 dg = optm_inner(d, g);
                 if (dg >= 0) {
-                    // L-BFGS approximation does not yield a descent
-                    // direction.
+                    // L-BFGS approximation does not yield a descent direction.
                     dir = 0; // discard search direction
                     if (!bounded) {
                         if (throwerrors) {
@@ -1346,9 +1350,9 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
                 }
             }
             if (dir == 0) {
-                // No information about the Hessian is available or the
-                // direction computed using the L-BFGS approximation failed to
-                // be a sufficient descent direction.  Take the steepest
+                // No exploitable information about the Hessian is available or
+                // the direction computed using the L-BFGS approximation failed
+                // to be a sufficient descent direction.  Take the steepest
                 // feasible descent direction.
                 d = -(bounded ? g*freevars : g);
                 dir = 1; // scaling needed
@@ -1358,17 +1362,16 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
                 alpha = 1.0;
             } else {
                 // Find a suitable step size along the steepest feasible
-                // descent direction `d`.  Note that gnorm, the Euclidean norm
-                // of the (projected) gradient, is also that of `d`.
+                // descent direction `d`.  Note that `gnorm`, the Euclidean
+                // norm of the (projected) gradient, is also that of `d`.
                 alpha = optm_steepest_descent_step(x, gnorm, f, fmin, delta, lambda);
             }
             stage = 1; // first trial along search direction
             if (bounded) {
                 // Safeguard the step to avoid searching in a region where
                 // all bounds are overreached.
-                a = optm_line_search_limits(x0, lower, upper, d, alpha);
-                amin = a(1);
-                amax = a(2);
+                local amin, amax;
+                optm_line_search_limits, amin, amax, x0, lower, upper, d, alpha;
                 alpha = min(alpha, amax);
             }
         }
