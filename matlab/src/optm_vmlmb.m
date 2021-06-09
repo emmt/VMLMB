@@ -405,51 +405,60 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
             if blmvm
                 pg0 = pg;
             end
-            if lbfgs.mp > 0
-                %% Use L-BFGS approximation to compute a search direction and
-                %% check that it is an acceptable descent direction.
-                [alpha, d] = optm_apply_lbfgs(lbfgs, -g, freevars);
-                if alpha > 0
-                    %% Some valid (s,y) pairs were available to apply the
-                    %% L-BFGS approximation.
-                    dg = optm_inner(d, g);
-                    if dg >= 0
-                        %% L-BFGS approximation does not yield a descent
-                        %% direction.
-                        if ~bounded
-                            if throwerrors
-                                error('L-BFGS approximation is not positive definite');
-                            end
-                            status = optm_status('NOT_POSITIVE_DEFINITE');
-                            break
+            %% Determine a new search direction `d`.  Parameter `dir` is set to:
+            %%   0 if `d` is not a search direction,
+            %%   1 if `d` is unscaled steepest descent,
+            %%   2 if `d` is scaled sufficient descent.
+            dir = 0;
+            %% Use L-BFGS approximation to compute a search direction and check
+            %% that it is an acceptable descent direction.
+            [d, scaled] = optm_apply_lbfgs(lbfgs, -g, freevars);
+            if ~scaled
+                %% No exploitable curvature information, `d` is the unscaled
+                %% steepest feasible direction.
+                dir = 1;
+            else
+                %% Some exploitable curvature information were available.
+                dir = 2;
+                dg = optm_inner(d, g);
+                if dg >= 0
+                    %% L-BFGS approximation does not yield a descent direction.
+                    dir = 0; % discard search direction
+                    if ~bounded
+                        if throwerrors
+                            error('L-BFGS approximation is not positive definite');
                         end
-                        alpha = 0;
-                    elseif epsilon > 0
-                        %% A more restrictive criterion has been specified for
-                        %% accepting a descent direction.
-                        dnorm = optm_norm2(d);
-                        if dg > -epsilon*dnorm*gnorm
-                            alpha = 0;
-                        end
+                        status = optm_status('NOT_POSITIVE_DEFINITE');
+                        break
                     end
-                    if alpha <= 0
-                        %% The direction computed using the L-BFGS
-                        %% approximation failed to be a sufficient descent
-                        %% direction.  Take the steepest feasible descent
-                        %% direction.
-                        d = -g;
+                elseif epsilon > 0
+                    %% A more restrictive criterion has been specified for
+                    %% accepting a descent direction.
+                    dnorm = optm_norm2(d);
+                    if dg > -epsilon*dnorm*gnorm
+                        dir = 0; % discard search direction
                     end
                 end
-            else
-                %% No L-BFGS approximation is available yet, will take the
-                %% steepest feasible descent direction.
-                d = -g;
-                alpha = 0;
             end
-            if alpha <= 0
+            if dir == 0
+                %% No exploitable information about the Hessian is available or
+                %% the direction computed using the L-BFGS approximation failed
+                %% to be a sufficient descent direction.  Take the steepest
+                %% feasible descent direction.
+                if bounded
+                    d = -g .* freevars;
+                else
+                    d = -g;
+                end
+                dir = 1; % scaling needed
+            end
+            %% Determine the length `alpha` of the initial step along `d`.
+            if dir == 2
+                alpha = 1.0;
+            else
                 %% Find a suitable step size along the steepest feasible
-                %% descent direction `d`.  Note that gnorm, the Euclidean norm
-                %% of the (projected) gradient, is also that of `d`.
+                %% descent direction `d`.  Note that `gnorm`, the Euclidean
+                %% norm of the (projected) gradient, is also that of `d`.
                 alpha = optm_steepest_descent_step(x, gnorm, f, fmin, ...
                                                    delta, lambda);
             end

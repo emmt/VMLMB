@@ -1,23 +1,22 @@
-%%     [stp, d] = optm_apply_lbfgs(lbfgs, g);
+%%     [d, scaled] = optm_apply_lbfgs(lbfgs, g);
 %%
-%% applies the L-BFGS approximation of the inverse Hessian stored in `lbfgs`
-%% to the "vector" `g`.  The result is returned in `d` while `stp` indicates
-%% the estimated step length to first try.  If no valid L-BFGS updates were
-%% available, `stp = 0` and `d` is equal to `g` (except that `d(i) = 0` if
-%% the `i`-th variable is blocked and such constraints apply, see below);
-%% otherwise, `stp = 1`.
+%% applies the L-BFGS approximation of the inverse Hessian stored in `lbfgs` to
+%% the "vector" `g`.  The result is returned in `d` while `scaled` indicates
+%% whether any curvature information was taken into account.  If `scaled` is
+%% false, it means that the result `d` is identical to `g` except that `d(i)=0`
+%% if the `i`-th variable is blocked according to `freevars`.
 %%
 %% The L-BFGS approximation may be restricted to a subset of "free variables"
 %% by specifying an additional argument:
 %%
-%%     [stp, d] = optm_apply_lbfgs(lbfgs, g, freevars);
+%%     [d, scaled] = optm_apply_lbfgs(lbfgs, g, freevars);
 %%
 %% where `freevars` is a logical array which is true (1) where variables are
 %% not blocked by constraints and false (0) elsewhere.
 %%
 %% See also `optm_new_lbfgs`, `optm_reset_lbfgs`, and `optm_update_lbfgs`.
 %%
-function [stp, d] = optm_apply_lbfgs(lbfgs, d, freevars)
+function [d, scaled] = optm_apply_lbfgs(lbfgs, d, freevars)
     if nargin < 2 || nargin > 3
         print_usage;
     end
@@ -95,9 +94,5 @@ function [stp, d] = optm_apply_lbfgs(lbfgs, d, freevars)
             end
         end
     end
-    if gamma > 0
-        stp = 1.0;
-    else
-        stp = 0.0;
-    end
+    scaled = (gamma > 0);
 end
