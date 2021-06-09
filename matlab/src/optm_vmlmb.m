@@ -135,7 +135,6 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
     False = false;
 
     %% Parse settings.
-    time = @() 86400000*now();
     lower = [];
     upper = [];
     mem = 5;
@@ -251,6 +250,7 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
     end
     lbfgs = optm_new_lbfgs(mem);
     if verbose
+        time = @() 86400E3*now(); % yields number of milliseconds
         t0 = time();
     end
     print_now = False;
@@ -374,13 +374,13 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
             print_now = verbose;
         end
         if print_now
-            t = (time() - t0)*1E3; % elapsed milliseconds
+            t = (time() - t0); % elapsed milliseconds
             if iters < 1
                 fprintf("%s%s\n%s%s\n", ...
-                       "# Iter.   Time (ms)   Eval.   Proj. ", ...
-                       "       Obj. Func.           Grad.       Step", ...
-                       "# ----------------------------------", ...
-                       "-----------------------------------------------");
+                        "# Iter.   Time (ms)   Eval.   Proj. ", ...
+                        "       Obj. Func.           Grad.       Step", ...
+                        "# ----------------------------------", ...
+                        "-----------------------------------------------");
             end
             fprintf("%7d %11.3f %7d %7d %23.15e %11.3e %11.3e\n", ...
                    iters, t, evals, projs, f, gnorm, alpha);

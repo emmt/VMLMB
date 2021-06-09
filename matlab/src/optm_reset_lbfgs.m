@@ -6,7 +6,7 @@
 %%
 %% Also see `optm_new_lbfgs`, `optm_update_lbfgs`, and `optm_apply_lbfgs`.
 function lbfgs = optm_reset_lbfgs(lbfgs)
-    if nargin != 1
+    if nargin ~= 1
         print_usage;
     end
     lbfgs.mp = 0;

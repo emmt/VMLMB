@@ -159,12 +159,12 @@ function [x, status] = optm_conjgrad(A, b, x, varargin)
     end
 
     %% Initialize local variables.
-    time = @() 86400000*now();
     rho = 0.0;
     phi = 0.0;
     phimax = 0.0;
     xtest = any(xtol > 0);
     if verbose
+        time = @() 86400E3*now(); % yields number of milliseconds
         t0 = time();
     end
 
@@ -196,28 +196,28 @@ function [x, status] = optm_conjgrad(A, b, x, varargin)
             z = r;
         end
         oldrho = rho;
-        rho = optm_inner(r, z); %% rho = ‖r‖_M^2
+        rho = optm_inner(r, z); % rho = ‖r‖_M^2
         if k == 0
             gtest = optm_tolerance(sqrt(rho), gtol);
         end
         if verbose
-            t = (time() - t0)*1E3; %% elapsed time in ms
+            t = (time() - t0); % elapsed time in ms
             if precond
                 if k == 0
                     fprintf("%s\n%s\n", ...
-                          "# Iter.   Time (ms)     Δf(x)       ‖∇f(x)‖     ‖∇f(x)‖_M", ...
-                          "# ---------------------------------------------------------");
+                            "# Iter.   Time (ms)     Δf(x)       ‖∇f(x)‖     ‖∇f(x)‖_M", ...
+                            "# ---------------------------------------------------------");
                 end
                 fprintf("%7d %11.3f %12.4e %12.4e %12.4e\n", ...
-                       k, t, phi, optm_norm2(r), sqrt(rho));
+                        k, t, phi, optm_norm2(r), sqrt(rho));
             else
                 if k == 0
                     fprintf("%s\n%s\n", ...
-                           "# Iter.   Time (ms)     Δf(x)       ‖∇f(x)‖", ...
-                           "# --------------------------------------------");
+                            "# Iter.   Time (ms)     Δf(x)       ‖∇f(x)‖", ...
+                            "# --------------------------------------------");
                 end
                 fprintf("%7d %11.3f %12.4e %12.4e\n", ...
-                       k, t, phi, sqrt(rho));
+                        k, t, phi, sqrt(rho));
             end
         end
         if sqrt(rho) <= gtest
@@ -259,7 +259,7 @@ function [x, status] = optm_conjgrad(A, b, x, varargin)
         alpha = rho/gamma;
 
         %% Update variables and check for convergence.
-        x = x+ alpha*p;
+        x = x + alpha*p;
         phi = alpha*rho/2;  %% phi = f(x_{k}) - f(x_{k+1}) ≥ 0
         phimax = max(phi, phimax);
         if phi <= optm_tolerance(phimax, ftol)
@@ -280,7 +280,7 @@ function [x, status] = optm_conjgrad(A, b, x, varargin)
         end
 
         %% Increment iteration number.
-        k = k+ 1;
+        k = k + 1;
     end
     if status < 0 && nargout < 2
         %% An error occured while the caller does not retrieve the status.
