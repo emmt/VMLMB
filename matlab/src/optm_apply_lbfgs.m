@@ -10,14 +10,14 @@
 %% The L-BFGS approximation may be restricted to a subset of "free variables"
 %% by specifying an additional argument:
 %%
-%%     [stp, d] = optm_apply_lbfgs(lbfgs, g, sel);
+%%     [stp, d] = optm_apply_lbfgs(lbfgs, g, freevars);
 %%
-%% where `sel` is a logical array which is true where variables are not blocked
-%% by constraints and false elsewhere.
+%% where `freevars` is a logical array which is true (1) where variables are
+%% not blocked by constraints and false (0) elsewhere.
 %%
 %% See also `optm_new_lbfgs`, `optm_reset_lbfgs`, and `optm_update_lbfgs`.
 %%
-function [stp, d] = optm_apply_lbfgs(lbfgs, d, sel)
+function [stp, d] = optm_apply_lbfgs(lbfgs, d, freevars)
     if nargin < 2 || nargin > 3
         print_usage;
     end
@@ -32,12 +32,13 @@ function [stp, d] = optm_apply_lbfgs(lbfgs, d, sel)
     alpha = zeros(m, 1);
     if nargin == 2
         regular = true;
-    elseif isempty(sel)
+    elseif isempty(freevars)
         regular = true;
-    elseif sel % true if all elements of sel and true
+    elseif freevars % true if all elements of freevars are true
         regular = true;
     else
         regular = false;
+        msk = double(freevars);
     end
     if regular
         %% Apply the 2-loop L-BFGS recursion algorithm by Matthies & Strang.
@@ -51,13 +52,12 @@ function [stp, d] = optm_apply_lbfgs(lbfgs, d, sel)
                 alpha(i) = alpha_i;
             end
             if gamma ~= 1
-                d = d * gamma;
+                d = gamma*d;
             end
             for j = mp:-1:1
                 i = mod((off - j), m) + 1;
-                alpha_i = alpha(i);
                 beta = optm_inner(d, Y{i})/rho(i);
-                d = d + (alpha_i - beta)*(S{i});
+                d = d + (alpha(i) - beta)*(S{i});
             end
         end
     else
@@ -65,47 +65,35 @@ function [stp, d] = optm_apply_lbfgs(lbfgs, d, sel)
         %% boolean array.
         rho = zeros(m, 1);
         gamma = 0.0;
-        last_i = -1;
-        full_size = size(d);
-        z = d(sel);
-        d = []; % free some memory?
+        d = d .* msk;
         for j = 1:mp
             i = mod((off - j), m) + 1;
-            s_i = S{i}(sel);
-            y_i = Y{i}(sel);
+            s_i = S{i};
+            y_i = Y{i} .* msk;
             rho_i = optm_inner(s_i, y_i);
             if rho_i > 0
                 if gamma <= 0
                     gamma = rho_i/optm_inner(y_i, y_i);
                 end
-                alpha_i = optm_inner(z, s_i)/rho_i;
-                z = z - alpha_i*y_i;
+                alpha_i = optm_inner(d, s_i)/rho_i;
+                d = d - alpha_i*y_i;
                 alpha(i) = alpha_i;
                 rho(i) = rho_i;
-                last_i = i;
             end
+            s_i = []; % free some memory?
+            y_i = []; % free some memory?
         end
         if gamma > 0 && gamma ~= 1
-            z = z * gamma;
+            d = gamma*d;
         end
         for j = mp:-1:1
             i = mod((off - j), m) + 1;
             rho_i = rho(i);
             if rho_i > 0
-                if (i ~= last_i)
-                    s_i = S{i}(sel);
-                    y_i = Y{i}(sel);
-                end
-                alpha_i = alpha(i);
-                beta = optm_inner(z, y_i)/rho_i;
-                z = z + (alpha_i - beta)*s_i;
-                last_i = i;
+                beta = optm_inner(d, Y{i})/rho_i;
+                d = d + (alpha(i) - beta)*(S{i} .* msk);
             end
         end
-        s_i = []; % free some memory?
-        y_i = []; % free some memory?
-        d = zeros(full_size);
-        d(sel) = z;
     end
     if gamma > 0
         stp = 1.0;
