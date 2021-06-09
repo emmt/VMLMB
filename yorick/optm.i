@@ -3,6 +3,8 @@
 // Multi-dimensional optimization for Yorick.
 //-----------------------------------------------------------------------------
 
+if (is_void(OPTM_DEBUG)) OPTM_DEBUG = 1n;
+
 OPTM_NOT_POSITIVE_DEFINITE = -1;
 OPTM_TOO_MANY_EVALUATIONS  =  1;
 OPTM_TOO_MANY_ITERATIONS   =  2;
@@ -686,11 +688,10 @@ func optm_apply_lbfgs(lbfgs, d, &scaled, freevars)
       Apply L-BFGS approximation of inverse Hessian to the "vector" `g`.
       Argument `lbfgs` is the structure storing the L-BFGS data.
 
-      Optional argument `freevars` is to restrict the L-BFGS approximation a subset
-      of "free variables".  Argument `freevars` can be an array of booleans (of type
-      `int` in Yorick) of same dimensions as `d` and equal to zero where
-      variables are blocked and to non-zero elsewhere.  Argument `freevars` can also
-      be a vector of the indices (of type `long` in Yorick) of free variables.
+      Optional argument `freevars` is to restrict the L-BFGS approximation a
+      subset of "free variables".  If specified, argument `freevars` shall be
+      an array of same dimensions as `d` and equal to zero where variables are
+      blocked and to one elsewhere.
 
       On return, output variable `scaled` indicates whether any curvature
       information was taken into account.  If `scaled` is false, it means that
@@ -701,32 +702,20 @@ func optm_apply_lbfgs(lbfgs, d, &scaled, freevars)
  */
 {
     // Variables.
-    local S, Y, alpha, rho, gamma, idx;
+    local S, Y, alpha, rho, gamma, msk;
 
     // Determine the number of variables and of free variables.
-    nvars = numberof(d);
-    if (is_void(freevars)) {
+    if (is_void(freevars) || allof(freevars)) {
         // All variables are free.
-        nfree = nvars;
+        regular = 1n;
     } else {
-        T = structof(freevars);
-        if (T == int && optm_same_dims(freevars, d)) {
-            // Assume `freevars` is a boolean mask indicating the free variables.
-            if (allof(freevars)) {
-                nfree = nvars;
-            } else {
-                idx = where(freevars);
-                nfree = numberof(idx);
-            }
-        } else if (T == long && is_vector(freevars)) {
-            // Assume `freevars` is the list of indices of free variables.
-            eq_nocopy, idx, freevars;
-            nfree = numberof(idx);
-        } else if (T == [] && freevars == (idx = where(0))) {
-            // Empty selection: all variables are blocked.
-            nfree = 0;
+        // Convert `freevars` in an array of weights of suitable type.
+        regular = 0n;
+        T = (structof(d) == float ? float : double);
+        if (structof(freevars) == T) {
+            eq_nocopy, msk, freevars;
         } else {
-            error, "invalid `freevars` argument (expecting a boolean mask or a list of indices)";
+            msk = T(freevars);
         }
     }
 
@@ -739,7 +728,7 @@ func optm_apply_lbfgs(lbfgs, d, &scaled, freevars)
         off = lbfgs.mrk + m;
         alpha = array(double, m);
     }
-    if (nfree == nvars) {
+    if (regular) {
         // Apply the regular L-BFGS recursion.
         if (mp >= 1) {
             eq_nocopy, rho, *lbfgs.rho;
@@ -763,50 +752,42 @@ func optm_apply_lbfgs(lbfgs, d, &scaled, freevars)
     } else {
         // L-BFGS recursion on a subset of free variables specified by a
         // selection of indices.
-        local s_i, y_i, last_i;
+        local s_i, y_i;
         rho = array(double, m);
         gamma = 0.0;
-        last_i = -1;
-        z = d(idx); // restrict argument to the subset of free variables
+        d *= msk; // restrict argument to the subset of free variables
         for (j = 1; j <= mp; ++j) {
             i = (off - j)%m + 1;
-            s_i = (*S(i))(idx);
-            y_i = (*Y(i))(idx);
-            last_i = i;
+            eq_nocopy, s_i, *S(i);
+            y_i = msk*(*Y(i));
             rho_i = optm_inner(s_i, y_i);
             if (rho_i > 0) {
                 if (gamma <= 0.0) {
                     gamma = rho_i/optm_inner(y_i, y_i);
                 }
-                alpha_i = optm_inner(z, s_i)/rho_i;
-                z -= alpha_i*y_i;
+                alpha_i = optm_inner(d, s_i)/rho_i;
+                d -= alpha_i*y_i;
                 alpha(i) = alpha_i;
                 rho(i) = rho_i;
             }
+            y_i = []; // free memory
         }
         if (gamma > 0 && gamma != 1) {
-            z = gamma*unref(z);
+            d = gamma*unref(d);
         }
         for (j = mp; j >= 1; --j) {
             i = (off - j)%m + 1;
             rho_i = rho(i);
             if (rho_i > 0) {
-                if (i != last_i) {
-                    // Re-extract s and y for the free variables.
-                    s_i = (*S(i))(idx);
-                    y_i = (*Y(i))(idx);
-                    last_i = i;
-                }
-                beta = optm_inner(z, y_i)/rho_i;
-                z += (alpha(i) - beta)*s_i;
+                beta = optm_inner(d, *Y(i))/rho_i;
+                d += (alpha(i) - beta)*msk*(*S(i));
             }
         }
-        s_i = []; // free memory
-        y_i = []; // free memory
-        d = array(structof(z), dimsof(d));
-        d(idx) = z;
     }
     scaled = (gamma > 0);
+    if (OPTM_DEBUG && !regular && anyof(d(where(!freevars)))) {
+        error, "non-zero search direction for some blocked variables";
+    }
     return d;
 }
 
@@ -1144,7 +1125,7 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
     if (is_array(upper) && allof(upper == +INF)) upper = [];
     bounded = (!is_void(lower) || !is_void(upper));
     if (!bounded) {
-        blmvm = FALSE; // no needs to use BLMVM trick in the inconstrained case
+        blmvm = FALSE; // no needs to use BLMVM trick in the unconstrained case
     }
 
     // Other initialization.
@@ -1246,7 +1227,7 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
                 gtest = max(0.0, gatol, grtol*gnorm);
             }
             if (status == 0 && gnorm <= gtest) {
-                // Convergence in gradient
+                // Convergence in gradient.
                 status = OPTM_GTEST_SATISFIED;
             }
             if (stage == 3) {
