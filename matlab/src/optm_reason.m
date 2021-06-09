@@ -11,18 +11,18 @@
 function mesg = optm_reason(code)
     switch code
         case 1 % TOO_MANY_EVALUATIONS
-            mesg = "too many evaluations";
+            mesg = 'too many evaluations';
         case 2 % TOO_MANY_ITERATIONS
-            mesg = "too many iterations";
+            mesg = 'too many iterations';
         case 3 % FTEST_SATISFIED
-            mesg = "function reduction test satisfied";
+            mesg = 'function reduction test satisfied';
         case 4 % XTEST_SATISFIED
-            mesg = "variables change test satisfied";
+            mesg = 'variables change test satisfied';
         case 5 % GTEST_SATISFIED
-            mesg = "(projected) gradient test satisfied";
+            mesg = '(projected) gradient test satisfied';
         case -1 % NOT_POSITIVE_DEFINITE
-            mesg = "matrix is not positive definite";
+            mesg = 'matrix is not positive definite';
         otherwise
-            error("unknown status code %d", code)
+            error('unknown status code %d', code)
     end
 end

@@ -18,24 +18,24 @@
 %% Algorithm parameters can be specified as name-value pair of arguments.
 %% Possible parameters are:
 %%
-%% * "precond" is to specify a preconditioner `M`.  It may be a function name
+%% * 'precond' is to specify a preconditioner `M`.  It may be a function name
 %%   or handle and is called as `M(x)` to compute the result of `M*x`.  By
 %%   default, the un-preconditioned version of the algorithm is run.
 %%
-%% * "maxiter" is to specify the maximum number of iterations to perform which
+%% * 'maxiter' is to specify the maximum number of iterations to perform which
 %%   is `intmax()` by default.
 %%
-%% * "restart" is to specify the number of consecutive iterations before
+%% * 'restart' is to specify the number of consecutive iterations before
 %%   restarting the conjugate gradient recurrence.  Restarting the algorithm is
 %%   to cope with the accumulation of rounding errors.  By default, `restart =
 %%   min(50,numel(x)+1)`.  Set `restart` to a value less or equal zero or
 %%   greater than `maxiter` if you do not want that any restarts ever occur.
 %%
-%% * "ftol" is to specify the absolute and relative tolerances for the function
+%% * 'ftol' is to specify the absolute and relative tolerances for the function
 %%   reduction as `[fatol,frtol]` or just `frtol` to assume `fatol = 0`.  By
 %%   default, `ftol = [0.0,1e-8]`.
 %%
-%% * "gtol" is to specify the absolute and relative tolerances for stopping the
+%% * 'gtol' is to specify the absolute and relative tolerances for stopping the
 %%   algorithm based on the gradient of the objective function as
 %%   `[gatol,grtol]` or just `grtol` to assume `gatol = 0`.  Convergence occurs
 %%   when the Mahalanobis norm of the residuals (which is that of the gradient
@@ -43,11 +43,11 @@
 %%   `gatol` and `grtol` times the Mahalanobis norm of the initial residuals.
 %%   By default, `gtol = [0.0,1e-5]`.
 %%
-%% * "xtol" is to specify the absolute and relative tolerances for the change
+%% * 'xtol' is to specify the absolute and relative tolerances for the change
 %%   in variables as `[xatol,xrtol]` or just `xrtol` to assume `xatol = 0`.  By
 %%   default, `xtol = [0.0,1e-6]`.
 %%
-%% * "verbose" is to specify whether to to print various information at each
+%% * 'verbose' is to specify whether to to print various information at each
 %%   iterations.
 %%
 %%
@@ -123,31 +123,31 @@ function [x, status] = optm_conjgrad(A, b, x, varargin)
     xtol = 1e-6;
     M = [];
     if mod(length(varargin), 2) ~= 0
-        error("parameters must be specified as pairs of names and values");
+        error('parameters must be specified as pairs of names and values');
     end
     for i = 1:2:length(varargin)
         key = varargin{i};
         val = varargin{i+1};
         switch key
-            case "ftol"
+            case 'ftol'
                 ftol = check_tolerance(key, val);
-            case "gtol"
+            case 'gtol'
                 gtol = check_tolerance(key, val);
-            case "xtol"
+            case 'xtol'
                 xtol = check_tolerance(key, val);
-            case "maxiter"
+            case 'maxiter'
                 maxiter = val;
-            case "restart"
+            case 'restart'
                 restart = val;
-            case "precond"
+            case 'precond'
                 M = val;
                 if ischar(M)
                     M = str2func(M);
                 end
-            case "verbose"
+            case 'verbose'
                 verbose = val;
             otherwise
-                error("invalid parameter name '%s'", key);
+                error('invalid parameter name `%s`', key);
         end
     end
 
@@ -210,35 +210,35 @@ function [x, status] = optm_conjgrad(A, b, x, varargin)
             t = (time() - t0); % elapsed time in ms
             if precond
                 if k == 0
-                    fprintf("%s\n%s\n", ...
-                            "# Iter.   Time (ms)     Δf(x)       ‖∇f(x)‖     ‖∇f(x)‖_M", ...
-                            "# ---------------------------------------------------------");
+                    fprintf('%s\n%s\n', ...
+                            '# Iter.   Time (ms)     Δf(x)       ‖∇f(x)‖     ‖∇f(x)‖_M', ...
+                            '# ---------------------------------------------------------');
                 end
-                fprintf("%7d %11.3f %12.4e %12.4e %12.4e\n", ...
+                fprintf('%7d %11.3f %12.4e %12.4e %12.4e\n', ...
                         k, t, phi, optm_norm2(r), sqrt(rho));
             else
                 if k == 0
-                    fprintf("%s\n%s\n", ...
-                            "# Iter.   Time (ms)     Δf(x)       ‖∇f(x)‖", ...
-                            "# --------------------------------------------");
+                    fprintf('%s\n%s\n', ...
+                            '# Iter.   Time (ms)     Δf(x)       ‖∇f(x)‖', ...
+                            '# --------------------------------------------');
                 end
-                fprintf("%7d %11.3f %12.4e %12.4e\n", ...
+                fprintf('%7d %11.3f %12.4e %12.4e\n', ...
                         k, t, phi, sqrt(rho));
             end
         end
         if sqrt(rho) <= gtest
             %% Normal convergence in the gradient norm.
             if verbose
-                fprintf("%s\n", "# Convergence in the gradient norm.");
+                fprintf('%s\n', '# Convergence in the gradient norm.');
             end
-            status = optm_status("GTEST_SATISFIED");
+            status = optm_status('GTEST_SATISFIED');
             break
         end
         if k >= maxiter
             if verbose
-                fprintf("%s\n", "# Too many iteration(s).");
+                fprintf('%s\n', '# Too many iteration(s).');
             end
-            status = optm_status("TOO_MANY_ITERATIONS");
+            status = optm_status('TOO_MANY_ITERATIONS');
             break
         end
 
@@ -257,9 +257,9 @@ function [x, status] = optm_conjgrad(A, b, x, varargin)
         gamma = optm_inner(p, q);
         if ~(gamma > 0)
             if verbose
-                fprintf("%s\n", "# Operator is not positive definite.");
+                fprintf('%s\n', '# Operator is not positive definite.');
             end
-            status = optm_status("NOT_POSITIVE_DEFINITE");
+            status = optm_status('NOT_POSITIVE_DEFINITE');
             break
         end
         alpha = rho/gamma;
@@ -271,17 +271,17 @@ function [x, status] = optm_conjgrad(A, b, x, varargin)
         if phi <= optm_tolerance(phimax, ftol)
             %% Normal convergence in the function reduction.
             if verbose
-                fprintf("%s\n", "# Convergence in the function reduction.");
+                fprintf('%s\n', '# Convergence in the function reduction.');
             end
-            status = optm_status("FTEST_SATISFIED");
+            status = optm_status('FTEST_SATISFIED');
             break
         end
         if xtest && alpha*optm_norm2(p) <= optm_tolerance(x, xtol)
             %% Normal convergence in the variables.
             if verbose
-                fprintf("%s\n", "# Convergence in the variables.");
+                fprintf('%s\n', '# Convergence in the variables.');
             end
-            status = optm_status("XTEST_SATISFIED");
+            status = optm_status('XTEST_SATISFIED');
             break
         end
 
@@ -300,6 +300,6 @@ function val = check_tolerance(key, val)
     elseif isvector(val) && numel(val) == 2
         return
     else
-        error("parameter '%s' value must be `rtol` or `[atol, rtol]`", key);
+        error('parameter `%s` value must be `rtol` or `[atol, rtol]`', key);
     end
 end

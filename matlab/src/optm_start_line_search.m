@@ -34,14 +34,14 @@ function lnsrch = optm_start_line_search(lnsrch, f0, df0, stp)
         if ~isfinite(stp) || stp <= 0
             stage = -1;
             stp = 0.0;
-            error("first step to try must be strictly greater than 0");
+            error('first step to try must be strictly greater than 0');
         else
             stage = 1;
         end
     else
         stage = -1;
         stp = 0.0;
-        error("not a descent direction");
+        error('not a descent direction');
     end
     lnsrch.finit = f0;
     lnsrch.ginit = df0;

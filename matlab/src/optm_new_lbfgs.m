@@ -10,7 +10,7 @@ function lbfgs = optm_new_lbfgs(m)
         print_usage;
     end
     if m < 0
-        error("invalid number of steps to memorize")
+        error('invalid number of steps to memorize')
     end
     lbfgs.m = m;
     lbfgs.mp = 0;

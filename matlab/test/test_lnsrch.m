@@ -4,7 +4,7 @@
 %%-----------------------------------------------------------------------------
 
 global optm_assertions optm_failures;
-addpath("../src");
+addpath('../src');
 
 function optm_assert(expr, mesg)
     global optm_assertions optm_failures;
@@ -17,14 +17,14 @@ function optm_assert(expr, mesg)
         optm_failures = 0;
     end
     if ~expr
-        printf("assertion failed: %s\n", mesg);
+        printf('assertion failed: %s\n', mesg);
         optm_failures += 1;
     end
 end
 
 function optm_summarize_tests(reset)
     global optm_assertions optm_failures;
-    printf("%d failure(s) / %d test(s)\n", optm_failures, optm_assertions);
+    printf('%d failure(s) / %d test(s)\n', optm_failures, optm_assertions);
     if nargin >= 1 && reset
         optm_failures = 0;
         optm_assertions = 0;
@@ -50,10 +50,10 @@ function optm_test_line_search(f, df, stp, lnsrch, quadratic)
     fmin = f1 = f0;
     nevals = 1;
     lnsrch = optm_start_line_search(lnsrch, f0, df0, stp);
-    optm_assert(lnsrch.step == stp, "lnsrch.step == stp");
-    optm_assert(lnsrch.stage == 1, "lnsrch.stage == 1");
-    optm_assert(lnsrch.finit == f0, "lnsrch.finit == f0");
-    optm_assert(lnsrch.ginit == df0, "lnsrch.dfinit == df0");
+    optm_assert(lnsrch.step == stp, 'lnsrch.step == stp');
+    optm_assert(lnsrch.stage == 1, 'lnsrch.stage == 1');
+    optm_assert(lnsrch.finit == f0, 'lnsrch.finit == f0');
+    optm_assert(lnsrch.ginit == df0, 'lnsrch.dfinit == df0');
     while (lnsrch.stage == 1)
         stp = lnsrch.step;
         f1 = f(stp);
@@ -66,18 +66,18 @@ function optm_test_line_search(f, df, stp, lnsrch, quadratic)
         else
             stage = 1;
         end
-        optm_assert(lnsrch.stage == stage, "lnsrch.stage == stage");
+        optm_assert(lnsrch.stage == stage, 'lnsrch.stage == stage');
         if (lnsrch.stage == 1)
-            optm_assert(lnsrch.step < stp, "lnsrch.step < stp");
-            optm_assert(lnsrch.step > 0, "lnsrch.step > 0");
-            optm_assert(lnsrch.step >= lnsrch.smin*stp, "lnsrch.step >= lnsrch.smin*stp");
-            optm_assert(lnsrch.step <= lnsrch.smax*stp, "lnsrch.step <= lnsrch.smax*stp");
+            optm_assert(lnsrch.step < stp, 'lnsrch.step < stp');
+            optm_assert(lnsrch.step > 0, 'lnsrch.step > 0');
+            optm_assert(lnsrch.step >= lnsrch.smin*stp, 'lnsrch.step >= lnsrch.smin*stp');
+            optm_assert(lnsrch.step <= lnsrch.smax*stp, 'lnsrch.step <= lnsrch.smax*stp');
 
         end
     end
-    optm_assert(lnsrch.stage == 2, "lnsrch.stage == 2");
-    optm_assert(!quadratic || nevals <= 3, " !quadratic || nevals <= 3");
-    optm_assert(fmin <= f0 + lnsrch.ftol*lnsrch.step*df0, "fmin <= f0 + lnsrch.ftol*lnsrch.stp*df0");
+    optm_assert(lnsrch.stage == 2, 'lnsrch.stage == 2');
+    optm_assert(!quadratic || nevals <= 3, ' !quadratic || nevals <= 3');
+    optm_assert(fmin <= f0 + lnsrch.ftol*lnsrch.step*df0, 'fmin <= f0 + lnsrch.ftol*lnsrch.stp*df0');
 end
 
 %% A quadratic convex function.

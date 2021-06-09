@@ -151,44 +151,44 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
     lambda = NAN;
     blmvm = FALSE;
     if mod(length(varargin), 2) ~= 0
-        error("parameters must be specified as pairs of names and values");
+        error('parameters must be specified as pairs of names and values');
     end
     for i = 1:2:length(varargin)
         key = varargin{i};
         val = varargin{i+1};
         switch key
-            case "lower"
+            case 'lower'
                 lower = val;
-            case "upper"
+            case 'upper'
                 upper = val;
-            case "mem"
+            case 'mem'
                 mem = val;
-            case "maxiter"
+            case 'maxiter'
                 maxiter = val;
-            case "maxeval"
+            case 'maxeval'
                 maxeval = val;
-            case "ftol"
+            case 'ftol'
                 ftol = val;
-            case "gtol"
+            case 'gtol'
                 gtol = val;
-            case "xtol"
+            case 'xtol'
                 xtol = val;
-            case "lnsrch"
+            case 'lnsrch'
                 lnsrch = val;
-            case "verbose"
+            case 'verbose'
                 verbose = val;
-            case "fmin"
+            case 'fmin'
                 fmin = val;
-            case "delta"
+            case 'delta'
                 delta = val;
-            case "epsilon"
+            case 'epsilon'
                 epsilon = val;
-            case "lambda"
+            case 'lambda'
                 lambda = val;
-            case "blmvm"
+            case 'blmvm'
                 blmvm = (val ~= 0);
             otherwise
-                error("invalid parameter name '%s'", key);
+                error('invalid parameter name `%s`', key);
         end
     end
     if isscalar(ftol)
@@ -284,7 +284,7 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
             alpha = 1.0;
             lnsrch = optm_start_line_search(lnsrch, f0, dg0, alpha);
             if lnsrch.stage ~= 1
-                error("something is wrong!");
+                error('something is wrong!');
             end
             stage = 2;
         end
@@ -298,7 +298,7 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
             elseif lnsrch.stage == 1
                 alpha = lnsrch.step;
             else
-                error("something is wrong!");
+                error('something is wrong!');
             end
         end
         if stage == 3 || stage == 0
@@ -309,7 +309,7 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
                 freevars = optm_active_variables(x, lower, upper, g);
                 if ~any(freevars(:))
                     %% Variables are all blocked.
-                    status = optm_status("XTEST_SATISFIED");
+                    status = optm_status('XTEST_SATISFIED');
                     gnorm = 0.0;
                 else
                     pg = freevars.*g;
@@ -331,13 +331,13 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
             end
             if status == 0 && gnorm <= gtest
                 %% Convergence in gradient
-                status = optm_status("GTEST_SATISFIED");
+                status = optm_status('GTEST_SATISFIED');
             end
             if stage == 3
                 if status == 0
                     %% Check convergence in relative function reduction.
                     if f <= fatol || abs(f - f0) <= max(0.0, frtol*max(abs(f), abs(f0)))
-                        status = optm_status("FTEST_SATISFIED");
+                        status = optm_status('FTEST_SATISFIED');
                     end
                 end
                 if alpha ~= 1.0
@@ -347,17 +347,17 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
                     %% Check convergence in variables.
                     dnorm = optm_norm2(d);
                     if dnorm <= max(0.0, xatol) || (xrtol > 0 && dnorm <= xrtol*optm_norm2(x))
-                        status = optm_status("XTEST_SATISFIED");
+                        status = optm_status('XTEST_SATISFIED');
                     end
                 end
             end
             if status == 0 && iters >= maxiter
-                status = optm_status("TOO_MANY_ITERATIONS");
+                status = optm_status('TOO_MANY_ITERATIONS');
             end
             print_now = verbose;
         end
         if status == 0 && evals >= maxeval
-            status = optm_status("TOO_MANY_EVALUATIONS");
+            status = optm_status('TOO_MANY_EVALUATIONS');
         end
         if verbose && status ~= 0 && ~print_now && best_f < f0
             %% Verbose mode and abnormal termination but some progress have
@@ -376,13 +376,13 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
         if print_now
             t = (time() - t0); % elapsed milliseconds
             if iters < 1
-                fprintf("%s%s\n%s%s\n", ...
-                        "# Iter.   Time (ms)   Eval.   Proj. ", ...
-                        "       Obj. Func.           Grad.       Step", ...
-                        "# ----------------------------------", ...
-                        "-----------------------------------------------");
+                fprintf('%s%s\n%s%s\n', ...
+                        '# Iter.   Time (ms)   Eval.   Proj. ', ...
+                        '       Obj. Func.           Grad.       Step', ...
+                        '# ----------------------------------', ...
+                        '-----------------------------------------------');
             end
-            fprintf("%7d %11.3f %7d %7d %23.15e %11.3e %11.3e\n", ...
+            fprintf('%7d %11.3f %7d %7d %23.15e %11.3e %11.3e\n', ...
                    iters, t, evals, projs, f, gnorm, alpha);
             print_now = ~print_now;
         end
@@ -420,9 +420,9 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
                         %% direction.
                         if ~bounded
                             if throwerrors
-                                error("L-BFGS approximation is not positive definite");
+                                error('L-BFGS approximation is not positive definite');
                             end
-                            status = optm_status("NOT_POSITIVE_DEFINITE");
+                            status = optm_status('NOT_POSITIVE_DEFINITE');
                             break
                         end
                         alpha = 0;

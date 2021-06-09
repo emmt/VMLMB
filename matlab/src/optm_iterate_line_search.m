@@ -72,7 +72,7 @@ function lnsrch = optm_iterate_line_search(lnsrch, f)
         elseif (smin == smax)
             gamma = smin;
         else
-            error("invalid fields smin and smax")
+            error('invalid fields smin and smax')
         end
         lnsrch.step = gamma*step;
         lnsrch.stage = 1;

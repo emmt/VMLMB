@@ -22,7 +22,7 @@ function [stp, d] = optm_apply_lbfgs(lbfgs, d, sel)
         print_usage;
     end
     if (nargin < 2) && (nargin > 3)
-        error("invalid number of arguments");
+        error('invalid number of arguments');
     end
     S = lbfgs.S;
     Y = lbfgs.Y;
