@@ -6,7 +6,7 @@
 %% It is the caller's resposibility to ensure that the bounds are compatible,
 %% in other words that `xmin ≤ xmax` holds.
 %%
-%% See also `optm_freevars` and `optm_line_search_limits`.
+%% See also `optm_active_variables` and `optm_line_search_limits`.
 function x = optm_clamp(x, xmin, xmax)
     if nargin ~= 3
         print_usage;

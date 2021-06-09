@@ -1,5 +1,5 @@
-%% optm_freevars - Get unbounded variables.
-%%     msk = optm_freevars(x, xmin, xmax, g);
+%% optm_active_variables - Get unbounded variables.
+%%     msk = optm_active_variables(x, xmin, xmax, g);
 %%
 %% yields a logical mask `msk` of the same size as `x` indicating which
 %% elements of `x` are not blocked by the bounds `xmin` and `xmax` when
@@ -13,7 +13,7 @@
 %% holds.
 %%
 %% See also `optm_clamp` and `optm_line_search_limits`.
-function msk = optm_freevars(x, xmin, xmax, g)
+function msk = optm_active_variables(x, xmin, xmax, g)
     if nargin ~= 4
         print_usage;
     end

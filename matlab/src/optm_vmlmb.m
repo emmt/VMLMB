@@ -306,7 +306,7 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
             if bounded
                 %% Determine the subset of free variables and compute the norm
                 %% of the projected gradient (needed to check for convergence).
-                freevars = optm_freevars(x, lower, upper, g);
+                freevars = optm_active_variables(x, lower, upper, g);
                 if ~any(freevars(:))
                     %% Variables are all blocked.
                     status = optm_status("XTEST_SATISFIED");

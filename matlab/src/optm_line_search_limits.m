@@ -26,7 +26,7 @@
 %% Restrictions: `x0` must be feasible and must have the same size as `d`; this
 %% is not verified for efficiency reasons.
 %%
-%% See also `optm_clamp` and `optm_freevars`.
+%% See also `optm_clamp` and `optm_active_variables`.
 function [amin, amax] = optm_line_search_limits(x0, xmin, xmax, d, dir)
     if nargin < 4 || nargin > 5
         print_usage;
