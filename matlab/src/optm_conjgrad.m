@@ -107,11 +107,17 @@
 %% called to have a textual description of the meaning of the returned status.
 function [x, status] = optm_conjgrad(A, b, x, varargin)
 
+    %% Constants.  Calling inf, nan, true or false takes too much time (2.1µs
+    %% instead of 0.2µs if stored in a variable), so use local variables
+    %% (shadowing the functions) to pay the price once.
+    TRUE = true;
+    FALSE = false;
+
     %% Default settings (all absolute tolerances set to zero).
     maxiter = intmax();
     restart = min(50, numel(b));
-    precond = false;
-    verbose = false;
+    precond = FALSE;
+    verbose = FALSE;
     ftol = 1e-8;
     gtol = 1e-5;
     xtol = 1e-6;
@@ -153,7 +159,7 @@ function [x, status] = optm_conjgrad(A, b, x, varargin)
     %% Starting solution.
     if nargin < 3 || isempty(x)
         x = zeros(size(b));
-        x_is_zero = true;
+        x_is_zero = TRUE;
     else
         x_is_zero = (optm_norm2(x) == 0.0);
     end
@@ -170,7 +176,7 @@ function [x, status] = optm_conjgrad(A, b, x, varargin)
 
     %% Conjugate gradient iterations.
     k = 0;
-    while true
+    while TRUE
         %% Is this the initial or a restarted iteration?
         restarting = (k == 0 || (restart > 0 && mod(k, restart) == 0));
 
@@ -180,7 +186,7 @@ function [x, status] = optm_conjgrad(A, b, x, varargin)
             if x_is_zero
                 %% Spare applying A since x = 0.
                 r = b;
-                x_is_zero = false;
+                x_is_zero = FALSE;
             else
                 %% Compute r = b - A*x.
                 r = b - A(x);

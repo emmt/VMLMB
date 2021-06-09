@@ -129,27 +129,27 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
     %% Constants.  Calling inf, nan, true or false takes too much time (2.1µs
     %% instead of 0.2µs if stored in a variable), so use local variables
     %% (shadowing the functions) to pay the price once.
-    Inf = inf;
-    NaN = nan;
-    True = true;
-    False = false;
+    INF = inf;
+    NAN = nan;
+    TRUE = true;
+    FALSE = false;
 
     %% Parse settings.
     lower = [];
     upper = [];
     mem = 5;
-    maxiter = Inf;
-    maxeval = Inf;
+    maxiter = INF;
+    maxeval = INF;
     ftol = 1e-8;
     gtol = 1e-5;
     xtol = 1e-6;
     lnsrch = [];
-    verbose = False;
-    fmin = NaN;
-    delta = NaN;
+    verbose = FALSE;
+    fmin = NAN;
+    delta = NAN;
     epsilon = 0.0;
-    lambda = NaN;
-    blmvm = False;
+    lambda = NAN;
+    blmvm = FALSE;
     if mod(length(varargin), 2) ~= 0
         error("parameters must be specified as pairs of names and values");
     end
@@ -192,7 +192,7 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
         end
     end
     if isscalar(ftol)
-        fatol = -Inf;
+        fatol = -INF;
         frtol = ftol;
     else
         fatol = ftol(1);
@@ -215,15 +215,15 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
 
     %% Bound constraints.  For faster code, unlimited bounds are preferentially
     %% represented by empty arrays.
-    if ~isempty(lower) && all(lower(:) == -Inf)
+    if ~isempty(lower) && all(lower(:) == -INF)
         lower = [];
     end
-    if ~isempty(upper) && all(upper(:) == +Inf)
+    if ~isempty(upper) && all(upper(:) == +INF)
         upper = [];
     end
     bounded = (~isempty(lower) || ~isempty(upper));
     if ~bounded
-        blmvm = False; % no needs to use BLMVM trick in the unconstrained case
+        blmvm = FALSE; % no needs to use BLMVM trick in the unconstrained case
     end
 
     %% If the caller does not retrieve the status argument, failures are
@@ -233,12 +233,12 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
     %% Other initialization.
     alpha = 0.0;   % step length
     amin = 0.0;    % first step length threshold
-    amax = Inf;    % last step length threshold
+    amax = INF;    % last step length threshold
     evals = 0;     % number of calls to fg
     iters = 0;     % number of iterations
     projs = 0;     % number of projections onto the feasible set
     status = 0;    % algorithm status is zero until termination.
-    best_f = Inf;  % best function value so far
+    best_f = INF;  % best function value so far
     best_g = [];   % corresponding gradient
     best_x = [];   % corresponding variables
     freevars = []; % subset of free variables not yet known
@@ -253,7 +253,7 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
         time = @() 86400E3*now(); % yields number of milliseconds
         t0 = time();
     end
-    print_now = False;
+    print_now = FALSE;
 
     %% Algorithm stage is one of:
     %% 0 = initial;
@@ -262,7 +262,7 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
     %% 3 = line-search has converged.
     stage = 0;
 
-    while True
+    while TRUE
         if bounded && stage < 2
             %% Make the variables feasible.
             x = optm_clamp(x, lower, upper);

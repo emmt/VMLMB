@@ -31,13 +31,13 @@ function [amin, amax] = optm_line_search_limits(x0, xmin, xmax, d, dir)
     if nargin < 4 || nargin > 5
         print_usage;
     end
-%    Inf = Inf; % calling Inf takes too much time (2.1µs instead of 0.2µs if
+    INF = Inf; % calling Inf takes too much time (2.1µs instead of 0.2µs if
                % stored in a variable), so use a local variable shadowing the
                % function to pay the price once
     %% Quick return if unconstrained.
     if isempty(xmin) && isempty(xmax)
-        amin = Inf;
-        amax = Inf;
+        amin = INF;
+        amax = INF;
         return
     end
     %% Is `d` an ascent direction?
@@ -46,18 +46,18 @@ function [amin, amax] = optm_line_search_limits(x0, xmin, xmax, d, dir)
     else
         ascent = (dir < 0);
     end
-    amin = Inf;
+    amin = INF;
     amax = 0.0;
     d = d(:); % flatten d (which is assumed to have the same size as x0) for
               % taking the min. and the max.
     if isempty(xmin)
         if ascent
             if max(d) > 0
-                amax = Inf;
+                amax = INF;
             end
         else
             if min(d) < 0
-                amax = Inf;
+                amax = INF;
             end
         end
     else
@@ -81,14 +81,14 @@ function [amin, amax] = optm_line_search_limits(x0, xmin, xmax, d, dir)
         end
     end
     if isempty(xmax)
-        if amax < Inf
+        if amax < INF
             if ascent
                 if min(d) < 0
-                    amax = Inf;
+                    amax = INF;
                 end
             else
                 if max(d) > 0
-                    amax = Inf;
+                    amax = INF;
                 end
             end
         end
@@ -109,7 +109,7 @@ function [amin, amax] = optm_line_search_limits(x0, xmin, xmax, d, dir)
         if ~isempty(a)
             a = a(i) ./ d(i);
             amin = min(amin, min(a));
-            if amax < Inf
+            if amax < INF
                 amax = max(amax, max(a));
             end
         end
