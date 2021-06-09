@@ -1,10 +1,6 @@
-%% optm_new_line_search - Create a line-search context.
-%%
-%% This function shall be called as:
-%%
 %%     lnsrch = optm_new_line_search('key', val, ...);
 %%
-%% to create a new line-search context.  All parameters are specified by their
+%% Create a new line-search context.  All parameters are specified by their
 %% name followed by their value.  Possible parameters are:
 %%
 %% - 'ftol' specifies the function decrease tolerance.  A step `alpha` is

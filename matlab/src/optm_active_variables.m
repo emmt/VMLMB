@@ -1,7 +1,6 @@
-%% optm_active_variables - Get unbounded variables.
 %%     msk = optm_active_variables(x, xmin, xmax, g);
 %%
-%% yields a logical mask `msk` of the same size as `x` indicating which
+%% Get a logical mask `msk` of the same size as `x` indicating which
 %% elements of `x` are not blocked by the bounds `xmin` and `xmax` when
 %% minimizing an objective function whose gradient is `g` at `x`.
 %%

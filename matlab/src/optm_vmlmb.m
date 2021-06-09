@@ -1,5 +1,3 @@
-%% optm_vmlmb - Apply VMLMB algorithm.
-%%
 %%     [x, f, g, status] = optm_vmlmb(fg, x0, ...);
 %%
 %% Apply VMLMB algorithm to minimize a multi-variate differentiable objective
@@ -330,7 +328,7 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
                 gtest = max(max(0.0, gatol), grtol*gnorm);
             end
             if status == 0 && gnorm <= gtest
-                %% Convergence in gradient
+                %% Convergence in gradient.
                 status = optm_status('GTEST_SATISFIED');
             end
             if stage == 3

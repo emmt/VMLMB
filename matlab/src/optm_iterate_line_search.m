@@ -1,13 +1,10 @@
-%% optm_iterate_line_search - Make next line-search iteration.
-%%
-%% This function shall be called as:
-%%
 %%     lnsrch = optm_iterate_line_search(lnsrch, phi(lnsrch.step));
 %%
-%% to update line-search context `lnsrch` accounting for the function value
-%% `phi(lnsrch.step)` at the current step `lnsrch.step`.  To find the step
-%% along a search direction `d` starting at `x0` and for the multi-variate
-%% function `f(x)`, the function `phi` shall be defined as:
+%% Perform next line-search iteration by updating line-search context `lnsrch`
+%% so as to account for the function value `phi(lnsrch.step)` at the current
+%% step `lnsrch.step`.  To find the step along a search direction `d` starting
+%% at `x0` and for the multi-variate function `f(x)`, the function `phi` shall
+%% be defined as:
 %%
 %%     phi(alpha) = f(x0 + alpha*d)
 %%

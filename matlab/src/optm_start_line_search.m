@@ -1,13 +1,9 @@
-%% optm_start_line_search - Initiate a new line-search.
-%%
-%% This function shall be called as:
-%%
 %%     lnsrch = optm_start_line_search(lnsrch, f0, df0, stp);
 %%
-%% to start a new line-search.  The first argument is the line-search context
-%% which is updated to reflect that a new line-search has been started.  The
-%% two next arguments are the value of the objective function and its
-%% directional derivative at the current iterate:
+%% Update context `lnsrch` to initiate a new line-search.  The first argument
+%% is the line-search context which is updated to reflect that a new
+%% line-search has been started.  The two next arguments are the value of the
+%% objective function and its directional derivative at the current iterate:
 %%
 %%     f0 = f(x0);
 %%     df0 = optm_inner(d, grad_f(x0));

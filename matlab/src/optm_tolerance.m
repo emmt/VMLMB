@@ -1,10 +1,6 @@
-%% optm_tolerance - Get a nonnegative tolerance based on given settings.
-%%
-%% The call:
-%%
 %%    val = optm_tolerance(arg, tol);
 %%
-%% yields a nonnegative value based on argument `arg` and on tolerance
+%% Compute a nonnegative value based on argument `arg` and on tolerance
 %% settings `tol`.  If `arg` is a scalar, the result is given by:
 %%
 %%    val = max(0.0, atol, rtol*abs(arg));

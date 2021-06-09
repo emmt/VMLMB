@@ -1,10 +1,6 @@
-%% optm_reason - Get textual description of status code.
-%%
-%% Call:
-%%
 %%     mesg = optm_reason(code);
 %%
-%% to retrieve a textual description of the status code returned by some
+%% Retrieve a textual description of the status code returned by some
 %% optimization method.
 %%
 %% See also `optm_status`, `optm_conjgrad`, and `optm_vmlmb`.

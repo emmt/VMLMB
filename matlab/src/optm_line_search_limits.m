@@ -10,7 +10,7 @@
 %% where `±` is `-` if `dir` is specified and negative and `+` otherwise.
 %%
 %% Returned value `amin` is the largest nonnegative step length such that if
-%% alpha ≥ amax, then:
+%% `alpha ≤ amin`, then:
 %%
 %%     proj(x0 ± alpha*d) = x0 ± alpha*d
 %%
@@ -51,6 +51,7 @@ function [amin, amax] = optm_line_search_limits(x0, xmin, xmax, d, dir)
     d = d(:); % flatten d (which is assumed to have the same size as x0) for
               % taking the min. and the max.
     if isempty(xmin)
+        %% No lower bound set.
         if ascent
             if max(d) > 0
                 amax = INF;
@@ -61,6 +62,7 @@ function [amin, amax] = optm_line_search_limits(x0, xmin, xmax, d, dir)
             end
         end
     else
+        %% Find step sizes to reach any lower bounds.
         i = [];
         a = [];
         if ascent
@@ -81,6 +83,7 @@ function [amin, amax] = optm_line_search_limits(x0, xmin, xmax, d, dir)
         end
     end
     if isempty(xmax)
+        %% No upper bound set.
         if amax < INF
             if ascent
                 if min(d) < 0
@@ -93,6 +96,7 @@ function [amin, amax] = optm_line_search_limits(x0, xmin, xmax, d, dir)
             end
         end
     else
+        %% Find step sizes to reach any upper bounds.
         i = [];
         a = [];
         if ascent
