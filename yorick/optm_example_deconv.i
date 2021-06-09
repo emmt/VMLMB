@@ -68,9 +68,9 @@ x0 = array(double, dimsof(dat));
 // "lhs" or handle @lhs both work).
 local status;
 x1 = optm_conjgrad(lhs, rhs, x0, status, maxiter=50, verbose=1);
-write, format="# Algorithm stops because %s.\n\n", optm_reason(status);
 plimg, x1, cmin=0, fig=4,
     title="Result of deconvolution by linear conjugate gradient";
+write, format="%s\n", "";
 
 // Function to compute the objective function and its gradient.
 func fg(x, &g)
@@ -86,20 +86,22 @@ func fg(x, &g)
 local f, g, status;
 x2 = optm_vmlmb(fg, x0, f, g, status,
                 fmin=0, maxiter=50, verbose=1);
-write, format = "# %s\n\n", optm_reason(status);
 plimg, x2, cmin=0, fig=5,
     title="Result of deconvolution by\nvariable metric method";
+write, format="%s\n", "";
+
 
 // Iterative deconvolution by a quasi-Newton method (with lower bound).
 x3 = optm_vmlmb(fg, x0, f, g, status, lower=0,
                 fmin=0, maxiter=50, verbose=1);
-write, format = "# %s\n\n", optm_reason(status);
 plimg, x3, cmin=0, fig=6,
     title="Result of deconvolution by\nvariable metric method and positivity constraints";
+write, format="%s\n", "";
+
 
 // Iterative deconvolution by a quasi-Newton method (with lower and upper bounds).
 x4 = optm_vmlmb(fg, x0, f, g, status, lower=0, upper=1e3,
                 fmin=0, maxiter=50, verbose=1);
-write, format = "# %s\n\n", optm_reason(status);
 plimg, x4, cmin=0, fig=7,
     title="Result of deconvolution by\nvariable metric method and lower and upper bounds";
+write, format="%s\n", "";

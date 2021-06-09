@@ -10,38 +10,14 @@ OPTM_FTEST_SATISFIED       =  3;
 OPTM_XTEST_SATISFIED       =  4;
 OPTM_GTEST_SATISFIED       =  5;
 
-local optm_status;
-/* DOCUMENT local optm_status;
-
-     Variable used by some optimization methods to store a code related to
-     their termination.  Its value is positive in case of (partial) success,
-     negative otherwise.
-
-     Example:
-
-         local optm_status;
-         x = optm_conjgrad(A, b);
-         if (optm_status <= OPTM_TOO_MANY_ITERATIONS) {
-             error, optm_reason();
-         }
-
-   SEE ALSO: optm_conjgrad, optm_reason.
- */
-
 func optm_reason(status)
-/* DOCUMENT str = optm_reason();
-         or str = optm_reason(status);
+/* DOCUMENT str = optm_reason(status);
 
      Get a textual description of the meaning of the termination code `status`.
-     If `status` is unspecified, the value of `optm_status` is used.
 
    SEE ALSO: optm_status, optm_conjgrad.
  */
 {
-    extern optm_conjgrad_status;
-    if (is_void(status)) {
-        status = optm_conjgrad_status;
-    }
     if (status == OPTM_NOT_POSITIVE_DEFINITE) {
         return "LHS operator is not positive definite";
     } else if (status == OPTM_TOO_MANY_ITERATIONS) {
@@ -53,9 +29,10 @@ func optm_reason(status)
     } else if (status == OPTM_XTEST_SATISFIED) {
         return "variables change test satisfied";
     } else {
-        return "unknown conjugate gradient result";
+        return "unknown status code";
     }
 }
+
 //-----------------------------------------------------------------------------
 // LINEAR CONJUGATE GRADIENT
 
@@ -167,13 +144,13 @@ func optm_conjgrad(A, b, x, &status, precond=, maxiter=, restart=, verbose=,
      * `status = OPTM_TOO_MANY_ITERATIONS` if the maximum number of iterations
        have been reached;
 
-     * `status = OPTM_FTEST_SATISFIED` if convergence occured because the
+     * `status = OPTM_FTEST_SATISFIED` if convergence occurred because the
        function reduction satisfies the criterion specified by `ftol`;
 
-     * `status = OPTM_GTEST_SATISFIED` if convergence occured because the
+     * `status = OPTM_GTEST_SATISFIED` if convergence occurred because the
        gradient norm satisfies the criterion specified by `gtol`;
 
-     * `status = OPTM_XTEST_SATISFIED` if convergence occured because the norm
+     * `status = OPTM_XTEST_SATISFIED` if convergence occurred because the norm
        of the variation of variables satisfies the criterion specified by
        `xtol`.
 
@@ -984,7 +961,7 @@ func optm_line_search_limits(x0, xmin, xmax, d, dir)
 // OPTIMIZATION METHODS
 func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
                 delta=, epsilon=, lambda=, ftol=, gtol=, xtol=,
-                blmvm=, maxiter=, maxeval=, verbose=, throwerrors=)
+                blmvm=, maxiter=, maxeval=, verbose=, output=, throwerrors=)
 /* DOCUMENT x = optm_vmlmb(fg, x0, [f, g, status,] lower=, upper=, mem=);
 
      Apply VMLMB algorithm to minimize a multi-variate differentiable objective
@@ -1109,6 +1086,8 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
      - Keyword `verbose` specifies whether to print information at each
        iteration.
 
+     - Keyword `output` specifies the file stream to print information.
+
      - Keyword `throwerrors` (true by default), specifies whether to call
        `error` in case of errors instead or returning a `status` indicating the
        problem.  Note that early termination due to limits set on the number of
@@ -1116,9 +1095,6 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
        considereed as an error.
  */
 {
-    // Extern variable to retrieve the status.
-    extern optm_status;
-
     // Constants.
     INF = OPTM_INFINITE;
     NAN = OPTM_QUIET_NAN;
@@ -1319,13 +1295,13 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
             timer, elapsed;
             t = (elapsed(3) - t0)*1E3; // elapsed milliseconds
             if (iters < 1) {
-                write, format = "%s%s\n%s%s\n",
+                write, output, format="%s%s\n%s%s\n",
                     "# Iter.   Time (ms)   Eval.   Proj. ",
                     "       Obj. Func.           Grad.       Step",
                     "# ----------------------------------",
                     "-----------------------------------------------";
             }
-            write, format = "%7d %11.3f %7d %7d %23.15e %11.3e %11.3e\n",
+            write, output, format="%7d %11.3f %7d %7d %23.15e %11.3e %11.3e\n",
                 iters, t, evals, projs, f, gnorm, alpha;
             print_now = !print_now;
         }
@@ -1429,7 +1405,9 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
         eq_nocopy, g, best_g;
         eq_nocopy, x, best_x;
     }
-    optm_status = status;
+    if (verbose) {
+        write, output, format="# Termination: %s\n", optm_reason(status);
+    }
     return x;
 }
 
