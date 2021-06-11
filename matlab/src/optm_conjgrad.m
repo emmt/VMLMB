@@ -108,10 +108,10 @@
 function [x, status] = optm_conjgrad(A, b, x, varargin)
 
     %% Constants.  Calling inf, nan, true or false takes too much time (2.1µs
-    %% instead of 0.2µs if stored in a variable), so use local variables
-    %% (shadowing the functions) to pay the price once.
-    TRUE = true;
-    FALSE = false;
+    %% instead of 0.2µs if stored in a variable), so use local variables to pay
+    %% the price only once.
+    TRUE = true();
+    FALSE = false();
 
     %% Default settings (all absolute tolerances set to zero).
     maxiter = intmax();

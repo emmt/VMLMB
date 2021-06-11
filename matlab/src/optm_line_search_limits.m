@@ -31,9 +31,12 @@ function [amin, amax] = optm_line_search_limits(x0, xmin, xmax, d, dir)
     if nargin < 4 || nargin > 5
         print_usage;
     end
-    INF = Inf; % calling Inf takes too much time (2.1µs instead of 0.2µs if
-               % stored in a variable), so use a local variable shadowing the
-               % function to pay the price once
+
+    %% Constants.  Calling inf, nan, true or false takes too much time (2.1µs
+    %% instead of 0.2µs if stored in a variable), so use local variables to pay
+    %% the price only once.
+    INF = Inf();
+
     %% Quick return if unconstrained.
     if isempty(xmin) && isempty(xmax)
         amin = INF;

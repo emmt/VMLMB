@@ -125,12 +125,12 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
     end
 
     %% Constants.  Calling inf, nan, true or false takes too much time (2.1µs
-    %% instead of 0.2µs if stored in a variable), so use local variables
-    %% (shadowing the functions) to pay the price once.
-    INF = inf;
-    NAN = nan;
-    TRUE = true;
-    FALSE = false;
+    %% instead of 0.2µs if stored in a variable), so use local variables to pay
+    %% the price only once.
+    INF = inf();
+    NAN = nan();
+    TRUE = true();
+    FALSE = false();
 
     %% Parse settings.
     lower = [];
