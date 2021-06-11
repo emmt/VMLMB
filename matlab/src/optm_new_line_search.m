@@ -13,7 +13,7 @@
 %%   at the start of the line-search, `df(x0)` is the directional derivative of
 %%   the objective function at `x0`, `alpha` is the step length and `d` is the
 %%   search direction.  The value of `ftol` must be in the range `(0,0.5]`, the
-%%   default value is `ftol = 0.01`.
+%%   default value is `ftol = 1E-4`.
 %%
 %% - 'smin' and 'smax' can be used to specify relative bounds for safeguarding
 %%   the step length.  When a step `alpha` is unsuccessful, a new backtracking
@@ -39,7 +39,7 @@ function lnsrch = optm_new_line_search(varargin)
     if mod(length(varargin), 2) ~= 0
         error('parameters must be specified as pairs of names and values')
     end
-    lnsrch.ftol = 0.01;
+    lnsrch.ftol = 1E-4;
     lnsrch.smin = 0.2;
     lnsrch.smax = 0.9;
     for i = 1:2:length(varargin)

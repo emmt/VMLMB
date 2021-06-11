@@ -375,7 +375,7 @@ local optm_iterate_line_search;
      at the start of the line-search, `df(x0)` is the directional derivative of
      the objective function at `x0`, `alpha` is the step length and `d` is the
      search direction.  The value of `ftol` must be in the range `(0,0.5]`, the
-     default value is `ftol = 0.01`.
+     default value is `ftol = 1E-4`.
 
      Keywords `smin` and `smax` can be used to specify relative bounds for
      safeguarding the step length.  When a step `alpha` is unsuccessful, a new
@@ -450,7 +450,7 @@ local optm_iterate_line_search;
 func optm_new_line_search(lnsrch, ftol=, smin=, smax=)
 {
     if (is_void(lnsrch)) {
-        lnsrch = OptmLineSearch(ftol=0.01, smin=0.2, smax=0.9);
+        lnsrch = OptmLineSearch(ftol=1E-4, smin=0.2, smax=0.9);
     }
     if (is_void(ftol)) ftol = lnsrch.ftol;
     if (ftol <= 0 || ftol > 0.5) error, "ftol must be in the range (0,0.5]";
