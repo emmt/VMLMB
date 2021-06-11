@@ -40,11 +40,11 @@ function [amin, amax] = optm_line_search_limits(x0, xmin, xmax, d, dir)
         amax = INF;
         return
     end
-    %% Is `d` an ascent direction?
+    %% Are we moving in backward direction?
     if nargin < 5
-        ascent = false;
+        backward = false;
     else
-        ascent = (dir < 0);
+        backward = (dir < 0);
     end
     amin = INF;
     amax = 0.0;
@@ -52,7 +52,7 @@ function [amin, amax] = optm_line_search_limits(x0, xmin, xmax, d, dir)
               % taking the min. and the max.
     if isempty(xmin)
         %% No lower bound set.
-        if ascent
+        if backward
             if max(d) > 0
                 amax = INF;
             end
@@ -65,7 +65,7 @@ function [amin, amax] = optm_line_search_limits(x0, xmin, xmax, d, dir)
         %% Find step sizes to reach any lower bounds.
         i = [];
         a = [];
-        if ascent
+        if backward
             if max(d) > 0
                 i = d > 0;
                 a = x0 - xmin;
@@ -85,7 +85,7 @@ function [amin, amax] = optm_line_search_limits(x0, xmin, xmax, d, dir)
     if isempty(xmax)
         %% No upper bound set.
         if amax < INF
-            if ascent
+            if backward
                 if min(d) < 0
                     amax = INF;
                 end
@@ -99,7 +99,7 @@ function [amin, amax] = optm_line_search_limits(x0, xmin, xmax, d, dir)
         %% Find step sizes to reach any upper bounds.
         i = [];
         a = [];
-        if ascent
+        if backward
             if min(d) < 0
                 i = d < 0;
                 a = x0 - xmax;

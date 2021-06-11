@@ -49,10 +49,10 @@ function lnsrch = optm_iterate_line_search(lnsrch, f)
     step  = lnsrch.step;
     ftol  = lnsrch.ftol;
     if (f <= finit + ftol*(ginit*step))
-        %% Linesearch has converged.
+        %% Line-search has converged.
         lnsrch.stage = 2;
     else
-        %% Linesearch has not converged.
+        %% Line-search has not converged.
         smin = lnsrch.smin;
         smax = lnsrch.smax;
         if (smin < smax)

@@ -6,8 +6,8 @@
 %% false, it means that the result `d` is identical to `g` except that `d(i)=0`
 %% if the `i`-th variable is blocked according to `freevars`.
 %%
-%% The L-BFGS approximation may be restricted to a subset of "free variables"
-%% by specifying an additional argument:
+%% The L-BFGS approximation may be restricted to a sub-space spanned by the
+%% "free variables" by specifying an additional argument:
 %%
 %%     [d, scaled] = optm_apply_lbfgs(lbfgs, g, freevars);
 %%

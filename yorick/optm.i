@@ -629,7 +629,9 @@ func optm_new_lbfgs(m)
 func optm_reset_lbfgs(&lbfgs)
 /* DOCUMENT optm_reset_lbfgs, lbfgs;
 
-     Reset Create a new L-BFGS instance for storing up to `m` previous steps.
+     Reset the L-BFGS model stored in context `lbfgs`, thus forgetting any
+     memorized information.  This also frees most memory allocated by the
+     context.
 
    SEE ALSO: optm_update_lbfgs, optm_apply_lbfgs.
  */
@@ -685,18 +687,18 @@ func optm_apply_lbfgs(lbfgs, d, &scaled, freevars)
 /* DOCUMENT d = optm_apply_lbfgs(lbfgs, g, scaled);
          or d = optm_apply_lbfgs(lbfgs, g, scaled, freevars);
 
-      Apply L-BFGS approximation of inverse Hessian to the "vector" `g`.
-      Argument `lbfgs` is the structure storing the L-BFGS data.
+     Apply L-BFGS approximation of inverse Hessian to the "vector" `g`.
+     Argument `lbfgs` is the structure storing the L-BFGS data.
 
-      Optional argument `freevars` is to restrict the L-BFGS approximation a
-      subset of "free variables".  If specified, argument `freevars` shall be
-      an array of same dimensions as `d` and equal to zero where variables are
-      blocked and to one elsewhere.
+     Optional argument `freevars` is to restrict the L-BFGS approximation to
+     the sub-space spanned by the "free variables".  If specified and not
+     empty, `freevars` shall have the size as `d` and shall be equal to zero
+     where variables are blocked and to one elsewhere.
 
-      On return, output variable `scaled` indicates whether any curvature
-      information was taken into account.  If `scaled` is false, it means that
-      the result `d` is identical to `g` except that `d(i)=0` if the `i`-th
-      variable is blocked according to `freevars`.
+     On return, output variable `scaled` indicates whether any curvature
+     information was taken into account.  If `scaled` is false, it means that
+     the result `d` is identical to `g` except that `d(i)=0` if the `i`-th
+     variable is blocked according to `freevars`.
 
    SEE ALSO: optm_new_lbfgs, optm_reset_lbfgs, optm_update_lbfgs, optm_inner.
  */
@@ -745,9 +747,8 @@ func optm_apply_lbfgs(lbfgs, d, &scaled, freevars)
         }
         for (j = mp; j >= 1; --j) {
             i = (off - j)%m + 1;
-            alpha_i = alpha(i);
             beta = optm_inner(d, *Y(i))/rho(i);
-            d += (alpha_i - beta)*(*S(i));
+            d += (alpha(i) - beta)*(*S(i));
         }
     } else {
         // L-BFGS recursion on a subset of free variables specified by a
@@ -800,8 +801,8 @@ func optm_clamp(x, xmin, xmax)
      Restrict `x` to the range `[xmin,xmax]` element-wise.  Empty bounds, that
      is `xmin = []` or `xmax = []`, are interpreted as unlimited.
 
-     It is the caller's resposibility to ensure that the bounds are compatible,
-     in other words that `xmin ≤ xmax` holds.
+     It is the caller's responsibility to ensure that the bounds are
+     compatible, in other words that `xmin ≤ xmax` holds.
 
    SEE ALSO: optm_active_variables and optm_line_search_limits.
  */
@@ -825,7 +826,7 @@ func optm_active_variables(x, xmin, xmax, g)
      Empty bounds, that is `xmin = []` or `xmax = []`, are interpreted as
      unlimited (as if `xmin = -Inf` and `xmax = +Inf`).
 
-     It is the caller's resposibility to ensure that the bounds are compatible
+     It is the caller's responsibility to ensure that the bounds are compatible
      and that the variables are feasible, in other words that `xmin ≤ x ≤ xmax`
      holds.
 
@@ -889,15 +890,15 @@ func optm_line_search_limits(&amin, &amax, x0, xmin, xmax, d, dir)
         return;
     }
     amax = 0.0;
-    ascent = (!is_void(dir) && dir < 0); // Is `d` an ascent direction?
+    backward = (!is_void(dir) && dir < 0); // Move in backward direction?
     if (no_lower) {
-        if (ascent ? (max(d) > 0) : (min(d) < 0)) {
+        if (backward ? (max(d) > 0) : (min(d) < 0)) {
             amax = INF;
         }
     } else {
         // Find step sizes to reach any lower bounds.
         i = a = [];
-        if (ascent) {
+        if (backward) {
             i = where(d > 0);
             if (is_array(i)) {
                 a = x0 - xmin;
@@ -916,13 +917,13 @@ func optm_line_search_limits(&amin, &amax, x0, xmin, xmax, d, dir)
     }
     if (no_upper) {
         // No upper bound set.
-        if (amax < INF && (ascent ? (min(d) < 0) : (max(d) > 0))) {
+        if (amax < INF && (backward ? (min(d) < 0) : (max(d) > 0))) {
             amax = INF;
         }
     } else {
         // Find step sizes to reach any upper bounds.
         a = i = [];
-        if (ascent) {
+        if (backward) {
             i = where(d < 0);
             if (is_array(i)) {
                 a = x0 - xmax;
