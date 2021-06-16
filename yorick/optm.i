@@ -38,7 +38,7 @@ func optm_reason(status)
 //-----------------------------------------------------------------------------
 // LINEAR CONJUGATE GRADIENT
 
-func optm_conjgrad(A, b, x0, &status, precond=, maxiter=, restart=, verbose=,
+func optm_conjgrad(A, b, x0, &status, precond=, maxiter=, restart=, verb=,
                    output=, ftol=, gtol=, xtol=)
 /* DOCUMENT x = optm_conjgrad(A, b, [x0, status]);
 
@@ -89,8 +89,8 @@ func optm_conjgrad(A, b, x0, &status, precond=, maxiter=, restart=, verbose=,
        or equal zero or greater than `maxiter` if you do not want that any
        restarts ever occur.
 
-     - Keyword `verbose` is to specify whether to print various information at
-       each iteration.
+     - Keyword `verb`, if positive, specifies to print information every `verb`
+       iterations.  Nothing is printed if `verb ≤ 0`.  By default, `verb = 0`.
 
      - Keywords `ftol`, `gtol` and `xtol` specify tolerances for deciding the
        convergence of the algorithm.  In what follows, `x_{k}`,
@@ -168,6 +168,7 @@ func optm_conjgrad(A, b, x0, &status, precond=, maxiter=, restart=, verbose=,
     if (is_void(gtol)) gtol = 1.0E-5;
     if (is_void(xtol)) xtol = 0.0;
     if (is_void(xrtol)) xrtol = 1.0E-6;
+    if (is_void(verb)) verb = 0;
     if (is_void(maxiter)) maxiter = 2*numberof(b) + 1;
     if (is_void(restart)) restart = 50;
     if (is_scalar(ftol)) {
@@ -198,7 +199,6 @@ func optm_conjgrad(A, b, x0, &status, precond=, maxiter=, restart=, verbose=,
         x_is_zero = 1n;
     } else {
         x = x0; // force a copy
-        &x == &x0
         x_is_zero = (optm_norm2(x) == 0.0);
     }
 
@@ -212,7 +212,7 @@ func optm_conjgrad(A, b, x0, &status, precond=, maxiter=, restart=, verbose=,
     phi = 0.0;    // function reduction
     phimax = 0.0; // maximum function reduction
     xtest = (xatol > 0.0 || xrtol > 0.0);
-    if (verbose) {
+    if (verb > 0) {
         elapsed = array(double, 3);
         timer, elapsed;
         t0 = elapsed(3);
@@ -252,44 +252,19 @@ func optm_conjgrad(A, b, x0, &status, precond=, maxiter=, restart=, verbose=,
             // to `2⋅sqrt(rho)`.
             gtest = max(0.0, gatol, 2.0*grtol*sqrt(rho));
         }
-        if (verbose) {
-            timer, elapsed;
-            t = (elapsed(3) - t0)*1E3; // elapsed time in ms
-            if (preconditioned) {
-                if (k == 0) {
-                    write, output, format="%s%s\n%s%s\n",
-                        "# Iter.   Time (ms)     Δf(x)       ‖∇f(x)‖  ",
-                        "   ‖∇f(x)‖_M",
-                        "# --------------------------------------------",
-                        "-------------";
-                }
-                write, output, format="%7d %11.3f %12.4e %12.4e %12.4e\n",
-                    k, t, phi, optm_norm2(r), sqrt(rho);
-            } else {
-                if(k == 0) {
-                    write, output, format="%s\n%s\n",
-                        "# Iter.   Time (ms)     Δf(x)       ‖∇f(x)‖",
-                        "# --------------------------------------------";
-                }
-                write, output, format="%7d %11.3f %12.4e %12.4e\n",
-                    k, t, phi, sqrt(rho);
-            }
+        if (verb > 0 && (k % verb) == 0) {
+            _optm_conjgrad_printer;
         }
         if (2.0*sqrt(rho) <= gtest) {
             // Normal convergence in the gradient norm.
-            if (verbose) {
-                write, output, format="# %s\n",
-                    "Convergence in the gradient norm.";
-            }
             status = OPTM_GTEST_SATISFIED;
-            return x;
+            mesg = "Convergence in the gradient norm.";
+            break;
         }
         if (k >= maxiter) {
-            if (verbose) {
-                write, output, format="# %s\n", "Too many iteration(s).";
-            }
             status = OPTM_TOO_MANY_ITERATIONS;
-            return x;
+            mesg = "Too many iteration(s).";
+            break;
         }
 
         // Compute search direction.
@@ -307,12 +282,9 @@ func optm_conjgrad(A, b, x0, &status, precond=, maxiter=, restart=, verbose=,
         q = A(p); // q = A*p
         gamma = optm_inner(p, q);
         if (!(gamma > 0.0)) {
-            if (verbose) {
-                write, output, format="# %s\n",
-                    "Operator is not positive definite.";
-            }
             status = OPTM_NOT_POSITIVE_DEFINITE;
-            return x;
+            mesg = "Operator is not positive definite.";
+            break;
         }
         alpha = rho/gamma;
 
@@ -322,22 +294,50 @@ func optm_conjgrad(A, b, x0, &status, precond=, maxiter=, restart=, verbose=,
         phimax = max(phi, phimax);
         if (phi <= optm_tolerance(phimax, fatol, frtol)) {
             // Normal convergence in the function reduction.
-            if (verbose) {
-                write, output, format="# %s\n",
-                    "Convergence in the function reduction.";
-            }
             status = OPTM_FTEST_SATISFIED;
-            return x;
+            mesg = "Convergence in the function reduction.";
+            break;
         }
         if (xtest && alpha*optm_norm2(p) <= optm_tolerance(x, xatol, xrtol)) {
             // Normal convergence in the variables.
-            if (verbose) {
-                write, output, format="# %s\n",
-                    "Convergence in the variables.";
-            }
             status = OPTM_XTEST_SATISFIED;
-            return x;
+            mesg = "Convergence in the variables.";
+            break;
         }
+    }
+    if (verb > 0) {
+        // Print last iteration if not yet done and termination message.
+        if ((k % verb) != 0) {
+            _optm_conjgrad_printer;
+        }
+        if (mesg) {
+            write, output, format="# %s\n", mesg;
+        }
+    }
+    return x;
+}
+
+// Helper function, all parameters passed as external.
+func _optm_conjgrad_printer
+{
+    timer, elapsed;
+    t = (elapsed(3) - t0)*1E3; // elapsed time in ms
+    if (preconditioned) {
+        if (k == 0) {
+            write, output, format="%s%s\n%s%s\n",
+                "# Iter.   Time (ms)     Δf(x)       ‖∇f(x)‖     ‖∇f(x)‖_M",
+                "# ---------------------------------------------------------";
+        }
+        write, output, format="%7d %11.3f %12.4e %12.4e %12.4e\n",
+            k, t, phi, optm_norm2(r), sqrt(rho);
+    } else {
+        if (k == 0) {
+            write, output, format="%s\n%s\n",
+                "# Iter.   Time (ms)     Δf(x)       ‖∇f(x)‖",
+                "# --------------------------------------------";
+        }
+        write, output, format="%7d %11.3f %12.4e %12.4e\n",
+            k, t, phi, sqrt(rho);
     }
 }
 
@@ -950,7 +950,7 @@ func optm_line_search_limits(&amin, &amax, x0, xmin, xmax, d, dir)
 // OPTIMIZATION METHODS
 func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
                 delta=, epsilon=, lambda=, ftol=, gtol=, xtol=,
-                blmvm=, maxiter=, maxeval=, verbose=, output=, throwerrors=)
+                blmvm=, maxiter=, maxeval=, verb=, output=, throwerrors=)
 /* DOCUMENT x = optm_vmlmb(fg, x0, [f, g, status,] lower=, upper=, mem=);
 
      Apply VMLMB algorithm to minimize a multi-variate differentiable objective
@@ -1051,7 +1051,7 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
        descent.
 
      - Keyword `lambda` specifies an estimate of the magnitude of the
-       eigenvalues of the Hessaian of the objective function.  This setting may
+       eigenvalues of the Hessian of the objective function.  This setting may
        be used to determine the step length along the steepest descent.
 
      - Keyword `epsilon` specifies a threshold for a sufficient descent
@@ -1072,8 +1072,8 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
        causing the algorithm to choose the steepest descent direction more
        often.
 
-     - Keyword `verbose` specifies whether to print information at each
-       iteration.
+     - Keyword `verb`, if positive, specifies to print information every `verb`
+       iterations.  Nothing is printed if `verb ≤ 0`.  By default, `verb = 0`.
 
      - Keyword `output` specifies the file stream to print information.
 
@@ -1098,7 +1098,7 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
     if (is_void(gtol)) gtol = 1.0E-5;
     if (is_void(xtol)) xtol = 1.0E-6;
     if (is_void(lnsrch)) lnsrch = optm_new_line_search();
-    if (is_void(verbose)) verbose = FALSE;
+    if (is_void(verb)) verb = 0;
     if (is_void(fmin)) fmin = NAN;
     if (is_void(delta)) delta = NAN;
     if (is_void(epsilon)) epsilon = 0.0;
@@ -1152,7 +1152,7 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
     best_x = [];   // corresponding variables
     freevars = []; // subset of free variables not yet known
     lbfgs = optm_new_lbfgs(mem);
-    if (verbose) {
+    if (verb > 0) {
         elapsed = array(double, 3);
         timer, elapsed;
         t0 = elapsed(3);
@@ -1261,12 +1261,12 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
             if (status == 0 && iters >= maxiter) {
                 status = OPTM_TOO_MANY_ITERATIONS;
             }
-            print_now = verbose;
+            print_now = (verb > 0 && (status != 0 || (iters % verb) == 0));
         }
         if (status == 0 && evals >= maxeval) {
             status = OPTM_TOO_MANY_EVALUATIONS;
         }
-        if (verbose && status != 0 && !print_now && best_f < f0) {
+        if (verb > 0 && status != 0 && !print_now && best_f < f0) {
             // Verbose mode and abnormal termination but some progresses have
             // been made since the start of the line-search.  Restore best
             // solution so far, pretend that one more iteration has been
@@ -1278,7 +1278,7 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
                 gnorm = optm_norm2(freevars*g);
             }
             iters += 1;
-            print_now = verbose;
+            print_now = TRUE;
         }
         if (print_now) {
             timer, elapsed;
@@ -1292,7 +1292,7 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
             }
             write, output, format="%7d %11.3f %7d %7d %23.15e %11.3e %11.3e\n",
                 iters, t, evals, projs, f, gnorm, alpha;
-            print_now = !print_now;
+            print_now = FALSE;
         }
         if (status != 0) {
             // Algorithm stops here.
@@ -1392,7 +1392,7 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
         eq_nocopy, g, best_g;
         eq_nocopy, x, best_x;
     }
-    if (verbose) {
+    if (verb > 0) {
         write, output, format="# Termination: %s\n", optm_reason(status);
     }
     return x;

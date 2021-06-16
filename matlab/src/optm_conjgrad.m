@@ -47,7 +47,7 @@
 %%   in variables as `[xatol,xrtol]` or just `xrtol` to assume `xatol = 0`.  By
 %%   default, `xtol = [0.0,1e-6]`.
 %%
-%% * 'verbose' is to specify whether to to print various information at each
+%% * 'verb' is to specify whether to to print various information at each
 %%   iterations.
 %%
 %%
@@ -117,7 +117,7 @@ function [x, status] = optm_conjgrad(A, b, x, varargin)
     maxiter = intmax();
     restart = min(50, numel(b));
     precond = FALSE;
-    verbose = FALSE;
+    verb = 0;
     ftol = 1e-8;
     gtol = 1e-5;
     xtol = 1e-6;
@@ -144,8 +144,8 @@ function [x, status] = optm_conjgrad(A, b, x, varargin)
                 if ischar(M)
                     M = str2func(M);
                 end
-            case 'verbose'
-                verbose = val;
+            case 'verb'
+                verb = val;
             otherwise
                 error('invalid parameter name `%s`', key);
         end
@@ -165,11 +165,12 @@ function [x, status] = optm_conjgrad(A, b, x, varargin)
     end
 
     %% Initialize local variables.
+    mesg = 0;
     rho = 0.0;
     phi = 0.0;
     phimax = 0.0;
     xtest = any(xtol > 0);
-    if verbose
+    if verb > 0
         time = @() 86400E3*now(); % yields number of milliseconds
         t0 = time();
     end
@@ -206,37 +207,20 @@ function [x, status] = optm_conjgrad(A, b, x, varargin)
         if k == 0
             gtest = optm_tolerance(sqrt(rho), gtol);
         end
-        if verbose
-            t = (time() - t0); % elapsed time in ms
-            if precond
-                if k == 0
-                    fprintf('%s\n%s\n', ...
-                            '# Iter.   Time (ms)     Δf(x)       ‖∇f(x)‖     ‖∇f(x)‖_M', ...
-                            '# ---------------------------------------------------------');
-                end
-                fprintf('%7d %11.3f %12.4e %12.4e %12.4e\n', ...
-                        k, t, phi, optm_norm2(r), sqrt(rho));
-            else
-                if k == 0
-                    fprintf('%s\n%s\n', ...
-                            '# Iter.   Time (ms)     Δf(x)       ‖∇f(x)‖', ...
-                            '# --------------------------------------------');
-                end
-                fprintf('%7d %11.3f %12.4e %12.4e\n', ...
-                        k, t, phi, sqrt(rho));
-            end
+        if verb > 0 && mod(k, verb) == 0
+            printer(k, time() - t0, phi, rho, r, precond);
         end
         if sqrt(rho) <= gtest
             %% Normal convergence in the gradient norm.
-            if verbose
-                fprintf('%s\n', '# Convergence in the gradient norm.');
+            if verb > 0
+                mesg = 'Convergence in the gradient norm.';
             end
             status = optm_status('GTEST_SATISFIED');
             break
         end
         if k >= maxiter
-            if verbose
-                fprintf('%s\n', '# Too many iteration(s).');
+            if verb > 0
+                mesg = 'Too many iteration(s).';
             end
             status = optm_status('TOO_MANY_ITERATIONS');
             break
@@ -256,8 +240,8 @@ function [x, status] = optm_conjgrad(A, b, x, varargin)
         q = A(p);
         gamma = optm_inner(p, q);
         if ~(gamma > 0)
-            if verbose
-                fprintf('%s\n', '# Operator is not positive definite.');
+            if verb > 0
+                mesg = 'Operator is not positive definite.';
             end
             status = optm_status('NOT_POSITIVE_DEFINITE');
             break
@@ -270,16 +254,16 @@ function [x, status] = optm_conjgrad(A, b, x, varargin)
         phimax = max(phi, phimax);
         if phi <= optm_tolerance(phimax, ftol)
             %% Normal convergence in the function reduction.
-            if verbose
-                fprintf('%s\n', '# Convergence in the function reduction.');
+            if verb > 0
+                mesg = 'Convergence in the function reduction.';
             end
             status = optm_status('FTEST_SATISFIED');
             break
         end
         if xtest && alpha*optm_norm2(p) <= optm_tolerance(x, xtol)
             %% Normal convergence in the variables.
-            if verbose
-                fprintf('%s\n', '# Convergence in the variables.');
+            if verb > 0
+                mesg = 'Convergence in the variables.';
             end
             status = optm_status('XTEST_SATISFIED');
             break
@@ -287,6 +271,15 @@ function [x, status] = optm_conjgrad(A, b, x, varargin)
 
         %% Increment iteration number.
         k = k + 1;
+    end
+    if verb > 0
+        %% Print last iteration if not yet done and termination message.
+        if mod(k, verb) ~= 0
+            printer(k, time() - t0, phi, rho, r, precond);
+        end
+        if ischar(mesg)
+            fprintf('# %s\n', mesg);
+        end
     end
     if status < 0 && nargout < 2
         %% An error occured while the caller does not retrieve the status.
@@ -301,5 +294,25 @@ function val = check_tolerance(key, val)
         return
     else
         error('parameter `%s` value must be `rtol` or `[atol, rtol]`', key);
+    end
+end
+
+function printer(k, t, phi, rho, r, precond)
+    if precond
+        if k == 0
+            fprintf('%s\n%s\n', ...
+                    '# Iter.   Time (ms)     Δf(x)       ‖∇f(x)‖     ‖∇f(x)‖_M', ...
+                    '# ---------------------------------------------------------');
+        end
+        fprintf('%7d %11.3f %12.4e %12.4e %12.4e\n', ...
+                k, t, phi, optm_norm2(r), sqrt(rho));
+    else
+        if k == 0
+            fprintf('%s\n%s\n', ...
+                    '# Iter.   Time (ms)     Δf(x)       ‖∇f(x)‖', ...
+                    '# --------------------------------------------');
+        end
+        fprintf('%7d %11.3f %12.4e %12.4e\n', ...
+                k, t, phi, sqrt(rho));
     end
 end

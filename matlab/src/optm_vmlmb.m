@@ -90,7 +90,7 @@
 %%   descent.
 %%
 %% - Keyword `lambda` specifies an estimate of the magnitude of the eigenvalues
-%%   of the Hessaian of the objective function.  This setting may be used to
+%%   of the Hessian of the objective function.  This setting may be used to
 %%   determine the step length along the steepest descent.
 %%
 %% - Keyword `epsilon` specifies a threshold for a sufficient descent
@@ -110,8 +110,8 @@
 %%   L-BFGS model of the Hessian is more likely to be inaccurate causing the
 %%   algorithm to choose the steepest descent direction more often.
 %%
-%% - Keyword `verbose` specifies whether to print information at each
-%%   iteration.
+%%  - Keyword `verb`, if positive, specifies to print information every `verb`
+%%    iterations.  Nothing is printed if `verb ≤ 0`.  By default, `verb = 0`.
 %%
 %% - Keyword `throwerrors` (true by default), specifies whether to call `error`
 %%   in case of errors instead or returning a `status` indicating the problem.
@@ -142,7 +142,7 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
     gtol = 1e-5;
     xtol = 1e-6;
     lnsrch = [];
-    verbose = FALSE;
+    verb = 0;
     fmin = NAN;
     delta = NAN;
     epsilon = 0.0;
@@ -173,8 +173,8 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
                 xtol = val;
             case 'lnsrch'
                 lnsrch = val;
-            case 'verbose'
-                verbose = val;
+            case 'verb'
+                verb = val;
             case 'fmin'
                 fmin = val;
             case 'delta'
@@ -247,7 +247,7 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
         fg = str2func(fg);
     end
     lbfgs = optm_new_lbfgs(mem);
-    if verbose
+    if verb > 0
         time = @() 86400E3*now(); % yields number of milliseconds
         t0 = time();
     end
@@ -352,12 +352,12 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
             if status == 0 && iters >= maxiter
                 status = optm_status('TOO_MANY_ITERATIONS');
             end
-            print_now = verbose;
+            print_now = (verb > 0 && (status != 0 || mod(iters, verb) == 0));
         end
         if status == 0 && evals >= maxeval
             status = optm_status('TOO_MANY_EVALUATIONS');
         end
-        if verbose && status ~= 0 && ~print_now && best_f < f0
+        if verb > 0 && status ~= 0 && ~print_now && best_f < f0
             %% Verbose mode and abnormal termination but some progress have
             %% been made since the start of the line-search.  Restore best
             %% solution so far, pretend that one more iteration has been
@@ -369,7 +369,7 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
                 gnorm = optm_norm2(freevars.*g);
             end
             iters = iters + 1;
-            print_now = verbose;
+            print_now = TRUE;
         end
         if print_now
             t = (time() - t0); % elapsed milliseconds
@@ -382,7 +382,7 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
             end
             fprintf('%7d %11.3f %7d %7d %23.15e %11.3e %11.3e\n', ...
                    iters, t, evals, projs, f, gnorm, alpha);
-            print_now = ~print_now;
+            print_now = FALSE;
         end
         if status ~= 0
             %% Algorithm stops here.
