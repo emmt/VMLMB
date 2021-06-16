@@ -38,7 +38,7 @@ func optm_reason(status)
 //-----------------------------------------------------------------------------
 // LINEAR CONJUGATE GRADIENT
 
-func optm_conjgrad(A, b, x, &status, precond=, maxiter=, restart=, verbose=,
+func optm_conjgrad(A, b, x0, &status, precond=, maxiter=, restart=, verbose=,
                    output=, ftol=, gtol=, xtol=)
 /* DOCUMENT x = optm_conjgrad(A, b, [x0, status]);
 
@@ -96,7 +96,7 @@ func optm_conjgrad(A, b, x, &status, precond=, maxiter=, restart=, verbose=,
        convergence of the algorithm.  In what follows, `x_{k}`,
        `f_{k}=f(x_{k})`, and `∇f_{k}=∇f(x_{k})` denotes the variables, the
        objective function and its gradient after `k` iterations ot the
-       algorithm (`x_{0} = x0` the intial estimate).
+       algorithm (`x_{0} = x0` the initial estimate).
 
        Convergence in the function occurs at iteration `k ≥ 1` if the following
        condition holds:
@@ -193,10 +193,12 @@ func optm_conjgrad(A, b, x, &status, precond=, maxiter=, restart=, verbose=,
     }
 
     // Initial solution.
-    if (is_void(x)) {
+    if (is_void(x0)) {
         x = array(structof(b), dimsof(b));
         x_is_zero = 1n;
     } else {
+        x = x0; // force a copy
+        &x == &x0
         x_is_zero = (optm_norm2(x) == 0.0);
     }
 
@@ -226,15 +228,15 @@ func optm_conjgrad(A, b, x, &status, precond=, maxiter=, restart=, verbose=,
             // Compute residuals.
             if (x_is_zero) {
                 // Spare applying A since x = 0.
-                eq_nocopy, r, b;
+                r = b;
                 x_is_zero = 0n;
             } else {
-                // Compute r = b - A*x.
-                r = b - A(x);
+                // Compute `r = b - A*x`.
+                r = b - A(x); // FIXME: optm_combine, r, +1, b, -1, A(x);
             }
         } else {
-            // Update residuals.
-            r = unref(r) - alpha*q;
+            // Update residuals: `r -= alpha*q`.
+            optm_update, r, -alpha, q;
         }
         if (preconditioned) {
             // Apply preconditioner `z = M⋅r`.
@@ -297,7 +299,7 @@ func optm_conjgrad(A, b, x, &status, precond=, maxiter=, restart=, verbose=,
         } else {
             // Apply recurrence.
             beta = rho/oldrho;
-            p = z + beta*p;
+            p = z + beta*p; // FIXME: optm_combine, p, +1, z, beta, p;
         }
 
         // Compute optimal step size.
@@ -315,7 +317,7 @@ func optm_conjgrad(A, b, x, &status, precond=, maxiter=, restart=, verbose=,
         alpha = rho/gamma;
 
         // Update variables and check for convergence.
-        x = unref(x) + alpha*p;
+        optm_update, x, alpha, p; // x += alpha*p
         phi = alpha*rho/2.0; // phi = f(x_{k}) - f(x_{k+1}) ≥ 0
         phimax = max(phi, phimax);
         if (phi <= optm_tolerance(phimax, fatol, frtol)) {
@@ -739,16 +741,16 @@ func optm_apply_lbfgs(lbfgs, d, &scaled, freevars)
         for (j = 1; j <= mp; ++j) {
             i = (off - j)%m + 1;
             alpha_i = optm_inner(d, *S(i))/rho(i);
-            d -= alpha_i*(*Y(i));
+            optm_update, d, -alpha_i, *Y(i); // d -= alpha_i*(*Y(i));
             alpha(i) = alpha_i;
         }
         if (gamma > 0 && gamma != 1) {
-            d = gamma*unref(d);
+            optm_scale, d, gamma;
         }
         for (j = mp; j >= 1; --j) {
             i = (off - j)%m + 1;
             beta = optm_inner(d, *Y(i))/rho(i);
-            d += (alpha(i) - beta)*(*S(i));
+            optm_update, d, alpha(i) - beta, *S(i); // d += (alpha(i) - beta)*(*S(i));
         }
     } else {
         // L-BFGS recursion on a subset of free variables specified by a
@@ -767,21 +769,21 @@ func optm_apply_lbfgs(lbfgs, d, &scaled, freevars)
                     gamma = rho_i/optm_inner(y_i, y_i);
                 }
                 alpha_i = optm_inner(d, s_i)/rho_i;
-                d -= alpha_i*y_i;
+                optm_update, d, -alpha_i, y_i; // d -= alpha_i*y_i;
                 alpha(i) = alpha_i;
                 rho(i) = rho_i;
             }
             y_i = []; // free memory
         }
         if (gamma > 0 && gamma != 1) {
-            d = gamma*unref(d);
+            optm_scale, d, gamma;
         }
         for (j = mp; j >= 1; --j) {
             i = (off - j)%m + 1;
             rho_i = rho(i);
             if (rho_i > 0) {
                 beta = optm_inner(d, *Y(i))/rho_i;
-                d += (alpha(i) - beta)*msk*(*S(i));
+                optm_update, d, alpha(i) - beta, msk*(*S(i)); // d += (alpha(i) - beta)*msk*(*S(i));
             }
         }
     }
@@ -1396,14 +1398,14 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
     return x;
 }
 
-
 //-----------------------------------------------------------------------------
 // UTILITIES AND ALGEBRA
 
-func optm_inner(x, y)
+local optm_inner;
+func _optm_inner(x, y)
 /* DOCUMENT optm_inner(x, y);
 
-     Yields the scalar product of X and Y that is sum(X*Y) but computed as
+     Yields the inner product of `x` and `y` that is `sum(x*y)`, but computed as
      efficiently as possible.
 
    SEE ALSO: optm_norm2.
@@ -1412,11 +1414,12 @@ func optm_inner(x, y)
     return sum(x*y);
 }
 
-func optm_norm1(x)
+local optm_norm1;
+func _optm_norm1(x)
 /* DOCUMENT optm_norm2(x);
 
-     Yields the L1 norm of X that is sum(abs(X)) but computed as efficiently as
-     possible.
+     Yields the L1-norm of `x`, that is `sum(abs(x))` but computed as
+     efficiently as possible.
 
    SEE ALSO: optm_norm2, optm_norminf.
  */
@@ -1424,11 +1427,12 @@ func optm_norm1(x)
     return (is_scalar(x) ? abs(x) : sum(abs(x)));
 }
 
-func optm_norm2(x)
+local optm_norm2;
+func _optm_norm2(x)
 /* DOCUMENT optm_norm2(x);
 
-     Yields the Euclidean (L2) norm of X that is sqrt(sum(X^2)) but computed as
-     efficiently as possible.
+     Yields the Euclidean (L2) norm of `x` that is `sqrt(sum(x^2))` but
+     computed as efficiently as possible.
 
    SEE ALSO: optm_inner, optm_norm1, optm_norminf.
  */
@@ -1436,10 +1440,11 @@ func optm_norm2(x)
     return (is_scalar(x) ? abs(x) : sqrt(sum(x*x)));
 }
 
-func optm_norminf(x)
+local optm_norminf;
+func _optm_norminf(x)
 /* DOCUMENT optm_norminf(x);
 
-     Yields the infinite norm of X that is max(abs(X)) but computed as
+     Yields the infinite norm of `x`, that is max(abs(X)) but computed as
      efficiently as possible.
 
    SEE ALSO: optm_norm1, optm_norm2.
@@ -1448,18 +1453,34 @@ func optm_norminf(x)
     return (is_scalar(x) ? abs(x) : max(-min(x), max(x)));
 }
 
-func optm_scale(alpha, x)
-/* DOCUMENT optm_scale(alpha, x);
+local optm_scale;
+func _optm_scale(&x, alpha)
+/* DOCUMENT optm_scale(x, alpha);
+         or optm_scale, x, alpha;
 
-     Yields ALPHA*X computed as efficiently as possible and taking care of
-     preserving the floting-point type of X.
+     Compute `alpha*x` efficiently and taking care of preserving the
+     floting-point type of `x`.  Argument `x` is overwritten with the result
+     when `optm_scale` is called as a subroutine.
  */
 {
-    T = structof(x);
-    if (T == double || T == float) {
-        alpha = T(alpha);
+    alpha = structof(x) == float ? float(alpha) : double(alpha);
+    if (am_subroutine()) {
+        x *= alpha;
+    } else {
+        return alpha*x;
     }
-    return alpha*x;
+}
+
+local optm_update;
+func _optm_update(&y, alpha, x)
+/* DOCUMENT optm_update, y, alpha, x;
+
+     Compute `y += alpha*x` efficiently and taking care of preserving the
+     floting-point type of `x` and `y`.
+ */
+{
+    T = (structof(x) == float && structof(y) == float) ? float : double;
+    y += T(alpha)*x;
 }
 
 func optm_tolerance(x, atol, rtol)
@@ -1467,10 +1488,10 @@ func optm_tolerance(x, atol, rtol)
 
      Given absolute and relative tolerances ATOL and RTOL, yields:
 
-         max(0, atol, rtol*abs(x))    // if X is a scalar
-         max(0, atol, rtol*norm(x))   // if X is an array
+         max(0, atol, rtol*abs(x))    // if `x` is a scalar
+         max(0, atol, rtol*norm(x))   // if `x` is an array
 
-    where norm(X) is the Euclidean norm of X as computed by optm_norm2 (which
+    where norm(X) is the Euclidean norm of `x` as computed by optm_norm2 (which
     to see).  If RTOL ≤ 0, the computation of norm(X) is avoided.
 
    SEE ALSO: optm_norm2.
@@ -1561,3 +1582,58 @@ local OPTM_INFINITE, OPTM_QUIET_NAN;
 */
 OPTM_INFINITE = optm_floating_point(double, "Inf");
 OPTM_QUIET_NAN = optm_floating_point(double, "qNaN");
+
+func optm_override_functions(mode)
+/* DOCUMENT optm_override_functions, mode;
+
+     If `mode = "fast"`, attempt to load `vops.i` plug-in and use fast
+     vectorized functions to perform basic linear algebra operations.
+
+     If `mode = "slow"`, use slower interpreted functions to perform basic
+     linear algebra operations.
+
+   SEE ALSO: optm_inner, optm_norm1, optm_norm2, optm_norminf, optm_scale,
+             optm_update.
+ */
+{
+    extern optm_inner;
+    extern optm_norm1;
+    extern optm_norm2;
+    extern optm_norminf;
+    extern optm_scale;
+    extern optm_update;
+    if (mode == "fast" || mode == "tryfast") {
+        // Try to use optimized operations (this must be done last).
+        if (is_func(vops_inner) == 3) {
+            // vops_inner is an autoload object, include "vops.i" now.
+            include, "vops.i", 3;
+        }
+        if (is_func(vops_inner) == 2) {
+            optm_inner   = vops_inner;
+            optm_norm1   = vops_norm1;
+            optm_norm2   = vops_norm2;
+            optm_norminf = vops_norminf;
+            optm_scale   = vops_scale;
+            optm_update  = vops_update;
+            return;
+        }
+        mesg = "cannot load \"vops.i\"";
+        if (mode == "fast") {
+            error, mesg;
+        }
+        write, format="WARNING: %s\n", mesg;
+        mode = "slow";
+    }
+    if (mode == "slow") {
+        optm_inner   = _optm_inner;
+        optm_norm1   = _optm_norm1;
+        optm_norm2   = _optm_norm2;
+        optm_norminf = _optm_norminf;
+        optm_scale   = _optm_scale;
+        optm_update  = _optm_update;
+    } else {
+        error, "argument must be \"fast\" or \"slow\"";
+    }
+}
+
+optm_override_functions, "tryfast";
