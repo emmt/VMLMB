@@ -1139,15 +1139,21 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
     // Other initialization.
     x = unref(x0); // initial iterate (avoiding copy)
     g = [];        // gradient
+    f0 = NAN;      // function value at start of line-search
     g0 = [];       // gradient at start of line-search
+    d = [];        // search direction
+    pg = [];       // projected gradient
+    pg0 = [];      // projected gradient at start of line search
+    dnorm = 0.0;   // Euclidean norm of the search direction
+    gnorm = 0.0;   // Euclidean norm of the (pojected) gradient
     alpha = 0.0;   // step length
-    amin = 0.0;    // first step length threshold
-    amax = INF;    // last step length threshold
+    amin = -INF;   // first step length threshold
+    amax = +INF;   // last step length threshold
     evals = 0;     // number of calls to fg
     iters = 0;     // number of iterations
     projs = 0;     // number of projections onto the feasible set
     status = 0;    // non-zero when algorithm is about to terminate
-    best_f = INF;  // best function value so far
+    best_f = +INF; // best function value so far
     best_g = [];   // corresponding gradient
     best_x = [];   // corresponding variables
     freevars = []; // subset of free variables not yet known
@@ -1159,20 +1165,23 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
     }
     print_now = FALSE;
 
-    // Algorithm stage is one of:
-    // 0 = initial;
-    // 1 = first trial step in line-search;
-    // 2 = second and subsequent trial steps in line-search;
-    // 3 = line-search has converged.
+    // Algorithm stage follows that of the line-search, it is one of:
+    // 0 = initially;
+    // 1 = line-search in progress;
+    // 2 = line-search has converged.
     stage = 0;
 
     while (TRUE) {
-        if (bounded && stage < 2) {
-            // Make the variables feasible.
+        if (bounded) {
+            // Make the variables feasible.  In principle, we can avoid this
+            // whenever `alpha ≤ amin` but rounding errors could make this
+            // wrong.  It is safer to always project the variables.  This cost
+            // O(n) operations which are probably negligible compared to, say,
+            // computing the objective function and its gradient.
             x = optm_clamp(unref(x), lower, upper);
             projs += 1;
         }
-        // Compute objective function and its gradient.
+        // Compute the objective function and its gradient.
         g = [];
         f = fg(x, g);
         evals += 1;
@@ -1183,30 +1192,20 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
             eq_nocopy, best_x, x;
         }
         if (stage == 1) {
-            // First trial along search direction.
-            d = x - x0; // effective step
-            dg0 = optm_inner(d, g0);
-            alpha = 1.0;
-            optm_start_line_search, lnsrch, f0, dg0, alpha;
-            if (lnsrch.stage != 1) {
-                error, "something is wrong!";
-            }
-            stage = 2;
-        }
-        if (stage == 2) {
-            // Check for line-search convergence.
+            // Line-search in progress, check for line-search convergence.
             optm_iterate_line_search, lnsrch, f;
-            if (lnsrch.stage == 2) {
+            stage = lnsrch.stage;
+            if (stage == 2) {
                 // Line-search has converged, `x` is the next iterate.
-                stage = 3;
                 iters += 1;
-            } else if (lnsrch.stage == 1) {
+            } else if (stage == 1) {
+                // Line-search has not converged, peek next trial step.
                 alpha = lnsrch.step;
             } else {
                 error, "something is wrong!";
             }
         }
-        if (stage == 3 || stage == 0) {
+        if (stage == 2 || stage == 0) {
             // Initial or next iterate after convergence of line-search.
             if (bounded) {
                 // Determine the subset of free variables and compute the norm
@@ -1238,7 +1237,7 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
                 // Convergence in gradient.
                 status = OPTM_GTEST_SATISFIED;
             }
-            if (stage == 3) {
+            if (stage == 2) {
                 if (status == 0) {
                     // Check convergence in relative function reduction.
                     if (f <= fatol ||
@@ -1246,15 +1245,14 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
                         status = OPTM_FTEST_SATISFIED;
                     }
                 }
-                if (alpha != 1.0) {
-                    d = x - x0; // recompute effective step
-                }
                 if (status == 0) {
                     // Check convergence in variables.
-                    dnorm = optm_norm2(d);
-                    if (dnorm <= max(0.0, xatol) ||
-                        (xrtol > 0 && dnorm <= xrtol*optm_norm2(x))) {
-                        status = OPTM_XTEST_SATISFIED;
+                    if (xatol > 0 || xrtol > 0) {
+                        snorm = optm_norm2(x - x0); // FIXME: alpha*dnorm
+                        if (snorm <= max(0.0, xatol) ||
+                            (xrtol > 0 && snorm <= xrtol*optm_norm2(x))) {
+                            status = OPTM_XTEST_SATISFIED;
+                        }
                     }
                 }
             }
@@ -1298,44 +1296,40 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
             // Algorithm stops here.
             break;
         }
-        if (stage == 3) {
+        if (stage == 2) {
             // Line-search has converged, L-BFGS approximation can be updated.
-            // FIXME: if alpha = 1, then d = x - x0;
+            // FIXME: s = x - x0 has already been computed
             if (blmvm) {
                 optm_update_lbfgs, lbfgs, x - x0, pg - pg0;
             } else {
                 optm_update_lbfgs, lbfgs, x - x0, g - g0;
             }
         }
-        if (stage == 3 || stage == 0) {
-            // Save iterate.
-            f0 = f;
-            eq_nocopy, g0, g;
-            eq_nocopy, x0, x;
-            if (blmvm) {
-                pg0 = pg; // FIXME:
-            }
+        if (stage == 2 || stage == 0) {
             // Determine a new search direction `d`.  Parameter `dir` is set to:
             //   0 if `d` is not a search direction,
             //   1 if `d` is unscaled steepest descent,
             //   2 if `d` is scaled sufficient descent.
             dir = 0;
+            dnorm = []; // FIXME: not needed
             // Use L-BFGS approximation to compute a search direction and
             // check that it is an acceptable descent direction.
             local scaled;
             d = optm_apply_lbfgs(lbfgs, -g, scaled, freevars);
+            dg = optm_inner(d, g);
             if (!scaled) {
                 // No exploitable curvature information, `d` is the unscaled
                 // steepest feasible direction.
                 dir = 1;
+                dnorm = gnorm; // FIXME: check that this is OK
             } else {
                 // Some valid (s,y) pairs were available to apply the
                 // L-BFGS approximation.
                 dir = 2;
-                dg = optm_inner(d, g);
                 if (dg >= 0) {
                     // L-BFGS approximation does not yield a descent direction.
                     dir = 0; // discard search direction
+                    dnorm = [];
                     if (!bounded) {
                         if (throwerrors) {
                             error, "L-BFGS approximation is not positive definite";
@@ -1353,11 +1347,15 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
                 }
             }
             if (dir == 0) {
+                // FIXME: count number of restarts
+
                 // No exploitable information about the Hessian is available or
                 // the direction computed using the L-BFGS approximation failed
                 // to be a sufficient descent direction.  Take the steepest
                 // feasible descent direction.
                 d = -(bounded ? g*freevars : g);
+                dnorm = gnorm;
+                dg = -dnorm*gnorm;
                 dir = 1; // scaling needed
             }
             // Determine the length `alpha` of the initial step along `d`.
@@ -1369,13 +1367,24 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
                 // norm of the (projected) gradient, is also that of `d`.
                 alpha = optm_steepest_descent_step(x, gnorm, f, fmin, delta, lambda);
             }
-            stage = 1; // first trial along search direction
             if (bounded) {
                 // Safeguard the step to avoid searching in a region where
                 // all bounds are overreached.
-                local amin, amax;
-                optm_line_search_limits, amin, amax, x0, lower, upper, d, alpha;
+                optm_line_search_limits, amin, amax, x, lower, upper, d, alpha;
                 alpha = min(alpha, amax);
+            }
+            // Initialize line-search.
+            optm_start_line_search, lnsrch, f, dg, alpha;
+            stage = lnsrch.stage;
+            if (stage != 1) {
+                error, "something is wrong!";
+            }
+            // Save iterate.
+            f0 = f;
+            eq_nocopy, g0, g;
+            eq_nocopy, x0, x;
+            if (blmvm) {
+                pg0 = pg; // FIXME:
             }
         }
         // Compute next iterate.
