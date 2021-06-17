@@ -189,26 +189,29 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
                 error('invalid parameter name `%s`', key);
         end
     end
+
+    %% Tolerances.  Most of these are forced to be nonnegative to simplify
+    %% tests.
     if isscalar(ftol)
         fatol = -INF;
-        frtol = ftol;
+        frtol = max(0.0, ftol);
     else
-        fatol = ftol(1);
-        frtol = ftol(2);
+        fatol = max(0.0, ftol(1));
+        frtol = max(0.0, ftol(2));
     end
     if isscalar(gtol)
         gatol = 0.0;
-        grtol = gtol;
+        grtol = max(0.0, gtol);
     else
-        gatol = gtol(1);
-        grtol = gtol(2);
+        gatol = max(0.0, gtol(1));
+        grtol = max(0.0, gtol(2));
     end
     if isscalar(xtol)
         xatol = 0.0;
-        xrtol = xtol;
+        xrtol = max(0.0, xtol);
     else
-        xatol = xtol(1);
-        xrtol = xtol(2);
+        xatol = max(0.0, xtol(1));
+        xrtol = max(0.0, xtol(2));
     end
 
     %% Bound constraints.  For faster code, unlimited bounds are preferentially
@@ -229,17 +232,30 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
     throwerrors = (nargout < 4);
 
     %% Other initialization.
-    alpha = 0.0;   % step length
-    amin = 0.0;    % first step length threshold
-    amax = INF;    % last step length threshold
-    evals = 0;     % number of calls to fg
-    iters = 0;     % number of iterations
-    projs = 0;     % number of projections onto the feasible set
-    status = 0;    % algorithm status is zero until termination.
-    best_f = INF;  % best function value so far
-    best_g = [];   % corresponding gradient
-    best_x = [];   % corresponding variables
-    freevars = []; % subset of free variables not yet known
+    g = [];          % gradient
+    f0 = +INF;       % function value at start of line-search
+    g0 = [];         % gradient at start of line-search
+    d = [];          % search direction
+    s = [];          % effective step
+    pg = [];         % projected gradient
+    pg0 = [];        % projected gradient at start of line search
+    gnorm = 0.0;     % Euclidean norm of the (pojected) gradient
+    alpha = 0.0;     % step length
+    amin = -INF;     % first step length threshold
+    amax = +INF;     % last step length threshold
+    evals = 0;       % number of calls to `fg`
+    iters = 0;       % number of iterations
+    projs = 0;       % number of projections onto the feasible set
+    status = 0;      % non-zero when algorithm is about to terminate
+    best_f = +INF;   % function value at `best_x`
+    best_g = [];     % gradient at `best_x`
+    best_x = [];     % best solution found so far
+    best_gnorm = -1; % norm of projected gradient at `best_x` (< 0 if unknown)
+    best_alpha =  0; % step length at `best_x` (< 0 if unknown)
+    best_evals = -1; % number of calls to `fg` at `best_x`
+    last_evals = -1; % number of calls to `fg` at last iterate
+    last_print = -1; % iteration number for last print
+    freevars = [];   % subset of free variables (not yet known)
     if isempty(lnsrch)
         lnsrch = optm_new_line_search();
     end
@@ -251,159 +267,121 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
         time = @() 86400E3*now(); % yields number of milliseconds
         t0 = time();
     end
-    print_now = FALSE;
 
-    %% Algorithm stage is one of:
-    %% 0 = initial;
-    %% 1 = first trial step in line-search;
-    %% 2 = second and subsequent trial steps in line-search;
-    %% 3 = line-search has converged.
+    %% Algorithm stage follows that of the line-search, it is one of:
+    %% 0 = initially;
+    %% 1 = line-search in progress;
+    %% 2 = line-search has converged.
     stage = 0;
 
     while TRUE
-        if bounded && stage < 2
-            %% Make the variables feasible.
+        %% Make the variables feasible.
+        if bounded
+            %% In principle, we can avoid projecting the variables whenever
+            %% `alpha ≤ amin` (because the fesible set is convex) but rounding
+            %% errors could make this wrong.  It is safer to always project the
+            %% variables.  This cost O(n) operations which are probably
+            %% negligible compared to, say, computing the objective function
+            %% and its gradient.
             x = optm_clamp(x, lower, upper);
             projs = projs + 1;
         end
         %% Compute objective function and its gradient.
         [f, g] = fg(x);
         evals = evals + 1;
-        if evals == 1 || f < best_f
+        if f < best_f || evals == 1
             %% Save best solution so far.
             best_f = f;
             best_g = g;
             best_x = x;
+            best_gnorm = -1; % must be recomputed
+            best_alpha = alpha;
+            best_evals = evals;
         end
-        if stage == 1
-            %% First trial along search direction.
-            d = x - x0; % effective step
-            dg0 = optm_inner(d, g0);
-            alpha = 1.0;
-            lnsrch = optm_start_line_search(lnsrch, f0, dg0, alpha);
-            if lnsrch.stage ~= 1
-                error('something is wrong!');
-            end
-            stage = 2;
-        end
-        if stage == 2
-            %% Check for line-search convergence.
+        if stage ~= 0
+            %% Line-search in progress, check for line-search convergence.
             lnsrch = optm_iterate_line_search(lnsrch, f);
-            if lnsrch.stage == 2
+            stage = lnsrch.stage;
+            if stage == 2
                 %% Line-search has converged, `x` is the next iterate.
-                stage = 3;
                 iters = iters + 1;
-            elseif lnsrch.stage == 1
+                last_evals = evals;
+            elseif stage == 1
+                %% Line-search has not converged, peek next trial step.
                 alpha = lnsrch.step;
             else
                 error('something is wrong!');
             end
         end
-        if stage == 3 || stage == 0
+        if stage ~= 1
             %% Initial or next iterate after convergence of line-search.
             if bounded
                 %% Determine the subset of free variables and compute the norm
                 %% of the projected gradient (needed to check for convergence).
                 freevars = optm_active_variables(x, lower, upper, g);
-                if ~any(freevars(:))
-                    %% Variables are all blocked.
-                    status = optm_status('XTEST_SATISFIED');
-                    gnorm = 0.0;
-                else
-                    pg = freevars.*g;
-                    gnorm = optm_norm2(pg);
-                    if ~blmvm
-                        %% Projected gradient no longer needed, free some
-                        %% memory.
-                        pg = [];
-                    end
+                pg = freevars .* g;
+                gnorm = optm_norm2(pg);
+                if ~blmvm
+                    %% Projected gradient no longer needed, free some memory.
+                    pg = [];
                 end
             else
                 %% Just compute the norm of the gradient.
                 gnorm = optm_norm2(g);
             end
+            if evals == best_evals
+                %% Now we know the norm of the (projected) gradient at the best
+                %% solution so far.
+                best_gnorm = gnorm;
+            end
             %% Check for algorithm convergence or termination.
             if evals == 1
                 %% Compute value for testing the convergence in the gradient.
-                gtest = max(max(0.0, gatol), grtol*gnorm);
+                gtest = max(gatol, grtol*gnorm);
             end
-            if status == 0 && gnorm <= gtest
+            if gnorm <= gtest
                 %% Convergence in gradient.
                 status = optm_status('GTEST_SATISFIED');
+                break
             end
-            if stage == 3
-                if status == 0
-                    %% Check convergence in relative function reduction.
-                    if f <= fatol || abs(f - f0) <= max(0.0, frtol*max(abs(f), abs(f0)))
-                        status = optm_status('FTEST_SATISFIED');
-                    end
+            if stage == 2
+                %% Check convergence in relative function reduction.
+                if f <= fatol || abs(f - f0) <= frtol*max(abs(f), abs(f0))
+                    status = optm_status('FTEST_SATISFIED');
+                    break
                 end
-                if alpha ~= 1.0
-                    d = x - x0; % recompute effective step
-                end
-                if status == 0
-                    %% Check convergence in variables.
-                    dnorm = optm_norm2(d);
-                    if dnorm <= max(0.0, xatol) || (xrtol > 0 && dnorm <= xrtol*optm_norm2(x))
-                        status = optm_status('XTEST_SATISFIED');
-                    end
+                %% Compute the effective change of variables.
+                s = x - x0;
+                snorm = optm_norm2(s);
+                %% Check convergence in variables.
+                if snorm <= xatol || (xrtol > 0 && snorm <= xrtol*optm_norm2(x))
+                    status = optm_status('XTEST_SATISFIED');
+                    break
                 end
             end
-            if status == 0 && iters >= maxiter
+            if iters >= maxiter
                 status = optm_status('TOO_MANY_ITERATIONS');
+                break
             end
-            print_now = (verb > 0 && (status != 0 || mod(iters, verb) == 0));
         end
-        if status == 0 && evals >= maxeval
+        if evals >= maxeval
             status = optm_status('TOO_MANY_EVALUATIONS');
-        end
-        if verb > 0 && status ~= 0 && ~print_now && best_f < f0
-            %% Verbose mode and abnormal termination but some progress have
-            %% been made since the start of the line-search.  Restore best
-            %% solution so far, pretend that one more iteration has been
-            %% performed and manage to print information about this iteration.
-            f = best_f;
-            g = best_g;
-            x = best_x;
-            if bounded
-                gnorm = optm_norm2(freevars.*g);
-            end
-            iters = iters + 1;
-            print_now = TRUE;
-        end
-        if print_now
-            t = (time() - t0); % elapsed milliseconds
-            if iters < 1
-                fprintf('%s%s\n%s%s\n', ...
-                        '# Iter.   Time (ms)   Eval.   Proj. ', ...
-                        '       Obj. Func.           Grad.       Step', ...
-                        '# ----------------------------------', ...
-                        '-----------------------------------------------');
-            end
-            fprintf('%7d %11.3f %7d %7d %23.15e %11.3e %11.3e\n', ...
-                   iters, t, evals, projs, f, gnorm, alpha);
-            print_now = FALSE;
-        end
-        if status ~= 0
-            %% Algorithm stops here.
             break
         end
-        if stage == 3
-            %% Line-search has converged, L-BFGS approximation can be updated.
-            %% FIXME: if alpha = 1, then d = x - x0;
-            if blmvm
-                lbfgs = optm_update_lbfgs(lbfgs, x - x0, pg - pg0);
-            else
-                lbfgs = optm_update_lbfgs(lbfgs, x - x0, g - g0);
+        if stage ~= 1
+            %% Possibly print iteration information.
+            if verb > 0 && mod(iters, verb) == 0
+                print_iteration(iters, time() - t0, evals, projs, f, gnorm, alpha);
+                last_print = iters;
             end
-        end
-        if stage == 3 || stage == 0
-            %% Save iterate and determine a new search direction.
-            f0 = f;
-            g0 = g;
-            x0 = x;
-            if blmvm
-                pg0 = pg;
+            if stage ~= 0
+                %% At least one step has been performed, L-BFGS approximation
+                %% can be updated.
+                if blmvm
+                    lbfgs = optm_update_lbfgs(lbfgs, s, pg - pg0);
+                else
+                    lbfgs = optm_update_lbfgs(lbfgs, s, g - g0);
+                end
             end
             %% Determine a new search direction `d`.  Parameter `dir` is set to:
             %%   0 if `d` is not a search direction,
@@ -412,15 +390,21 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
             dir = 0;
             %% Use L-BFGS approximation to compute a search direction and check
             %% that it is an acceptable descent direction.
-            [d, scaled] = optm_apply_lbfgs(lbfgs, -g, freevars);
+            if blmvm
+                [d, scaled] = optm_apply_lbfgs(lbfgs, -pg);
+                d = d .* freevars;
+            else
+                [d, scaled] = optm_apply_lbfgs(lbfgs, -g, freevars);
+            end
+            dg = optm_inner(d, g);
             if ~scaled
                 %% No exploitable curvature information, `d` is the unscaled
-                %% steepest feasible direction.
+                %% steepest feasible direction, that is the opposite of the
+                %% projected gradient.
                 dir = 1;
             else
                 %% Some exploitable curvature information were available.
                 dir = 2;
-                dg = optm_inner(d, g);
                 if dg >= 0
                     %% L-BFGS approximation does not yield a descent direction.
                     dir = 0; % discard search direction
@@ -434,8 +418,7 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
                 elseif epsilon > 0
                     %% A more restrictive criterion has been specified for
                     %% accepting a descent direction.
-                    dnorm = optm_norm2(d);
-                    if dg > -epsilon*dnorm*gnorm
+                    if dg > -epsilon*optm_norm2(d)*gnorm
                         dir = 0; % discard search direction
                     end
                 end
@@ -450,25 +433,40 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
                 else
                     d = -g;
                 end
+                dg = -gnorm^2;
                 dir = 1; % scaling needed
             end
             %% Determine the length `alpha` of the initial step along `d`.
             if dir == 2
+                %% The search direction is already scaled.
                 alpha = 1.0;
             else
                 %% Find a suitable step size along the steepest feasible
                 %% descent direction `d`.  Note that `gnorm`, the Euclidean
-                %% norm of the (projected) gradient, is also that of `d`.
+                %% norm of the (projected) gradient, is also that of `d` in
+                %% that case.
                 alpha = optm_steepest_descent_step(x, gnorm, f, fmin, ...
                                                    delta, lambda);
             end
-            stage = 1; % first trial along search direction
             if bounded
                 %% Safeguard the step to avoid searching in a region where
                 %% all bounds are overreached.
-                [amin, amax] = optm_line_search_limits(x0, lower, upper, ...
+                [amin, amax] = optm_line_search_limits(x, lower, upper, ...
                                                        d, alpha);
                 alpha = min(alpha, amax);
+            end
+            %% Initialize line-search.
+            lnsrch = optm_start_line_search(lnsrch, f, dg, alpha);
+            stage = lnsrch.stage;
+            if stage ~= 1
+                error('something is wrong!');
+            end
+            %% Save iterate at start of line-search.
+            f0 = f;
+            g0 = g;
+            x0 = x;
+            if blmvm
+                pg0 = pg;
             end
         end
         %% Compute next iterate.
@@ -478,10 +476,52 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
             x = x0 + alpha*d;
         end
     end
+
+    %% In case of abnormal termination, some progresses may have been made
+    %% since the start of the line-search.  In that case, we restore the best
+    %% solution so far.
     if best_f < f
-        %% Restore best solution so far.
         f = best_f;
         g = best_g;
         x = best_x;
+        if verb > 0
+            %% Restore other information for printing.
+            alpha = best_alpha;
+            if best_gnorm >= 0
+                gnorm = best_gnorm;
+            else
+                %% Compute the norm of the (projected) gradient.
+                if bounded
+                    freevars = optm_active_variables(x, lower, upper, g);
+                    gnorm = optm_norm2(g .* freevars);
+                else
+                    gnorm = optm_norm2(g);
+                end
+            end
+            if f < f0
+                %% Some progresses since last iterate, pretend that one more
+                %% iteration has been performed.
+                ++iters;
+            end
+        end
     end
+    if verb > 0
+        if iters > last_print
+            print_iteration(iters, time() - t0, evals, projs, f, gnorm, alpha);
+            last_print = iters;
+        end
+        fprintf('# Termination: %s\n', optm_reason(status));
+    end
+end
+
+function print_iteration(iters, t, evals, projs, f, gnorm, alpha)
+    if iters < 1
+        fprintf('%s%s\n%s%s\n', ...
+                '# Iter.   Time (ms)   Eval.   Proj. ', ...
+                '       Obj. Func.           Grad.       Step', ...
+                '# ----------------------------------', ...
+                '-----------------------------------------------');
+    end
+    fprintf('%7d %11.3f %7d %7d %23.15e %11.3e %11.3e\n', ...
+            iters, t, evals, projs, f, gnorm, alpha);
 end
