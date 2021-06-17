@@ -246,6 +246,7 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
     evals = 0;       % number of calls to `fg`
     iters = 0;       % number of iterations
     projs = 0;       % number of projections onto the feasible set
+    rejects = 0;     % number of search direction rejections
     status = 0;      % non-zero when algorithm is about to terminate
     best_f = +INF;   % function value at `best_x`
     best_g = [];     % gradient at `best_x`
@@ -371,7 +372,7 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
         if stage ~= 1
             %% Possibly print iteration information.
             if verb > 0 && mod(iters, verb) == 0
-                print_iteration(iters, time() - t0, evals, projs, f, gnorm, alpha);
+                print_iteration(iters, time() - t0, evals, rejects, f, gnorm, alpha);
                 last_print = iters;
             end
             if stage ~= 0
@@ -435,6 +436,9 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
                 end
                 dg = -gnorm^2;
                 dir = 1; % scaling needed
+            end
+            if dir ~= 2 && iters > 0
+                rejects = rejects + 1;
             end
             %% Determine the length `alpha` of the initial step along `d`.
             if dir == 2
@@ -507,21 +511,21 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
     end
     if verb > 0
         if iters > last_print
-            print_iteration(iters, time() - t0, evals, projs, f, gnorm, alpha);
+            print_iteration(iters, time() - t0, evals, rejects, f, gnorm, alpha);
             last_print = iters;
         end
         fprintf('# Termination: %s\n', optm_reason(status));
     end
 end
 
-function print_iteration(iters, t, evals, projs, f, gnorm, alpha)
+function print_iteration(iters, t, evals, rejects, f, gnorm, alpha)
     if iters < 1
         fprintf('%s%s\n%s%s\n', ...
-                '# Iter.   Time (ms)   Eval.   Proj. ', ...
+                '# Iter.   Time (ms)    Eval. Reject.', ...
                 '       Obj. Func.           Grad.       Step', ...
                 '# ----------------------------------', ...
                 '-----------------------------------------------');
     end
     fprintf('%7d %11.3f %7d %7d %23.15e %11.3e %11.3e\n', ...
-            iters, t, evals, projs, f, gnorm, alpha);
+            iters, t, evals, rejects, f, gnorm, alpha);
 end
