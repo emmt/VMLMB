@@ -1,15 +1,15 @@
-%%     [x, f, g, status] = optm_vmlmb(fg, x0, ...);
+%%     [x, f, g, status] = optm_vmlmb(fg, x0, 'key', val, ...);
 %%
 %% Apply VMLMB algorithm to minimize a multi-variate differentiable objective
-%% function possibly under separble bound constraints.  VMLMB is a quasi-Newton
-%% method ("VM" is for "Variable Metric") with low memory requirements ("LM" is
-%% for "Limited Memory") and which can optionally take into account separable
-%% bound constraints (the final "B") on the variables.  To determine efficient
-%% search directions, VMLMB approximates the Hessian of the objective function
-%% by a model, called L-BFGS for short, which is a limited memory version of
-%% the one assumed in Broyden-Fletcher-Goldfarb-Shanno algorithm.  Hence VMLMB
-%% is well suited to solving optimization problems with a very large number of
-%% variables possibly with bound constraints.
+%% function possibly under separable bound constraints.  VMLMB is a
+%% quasi-Newton method ("VM" is for "Variable Metric") with low memory
+%% requirements ("LM" is for "Limited Memory") and which can optionally take
+%% into account separable bound constraints (the final "B") on the variables.
+%% To determine efficient search directions, VMLMB approximates the Hessian of
+%% the objective function by a limited memory version of the model assumed in
+%% Broyden-Fletcher-Goldfarb-Shanno algorithm (called L-BFGS for short).  Hence
+%% VMLMB is well suited to solving optimization problems with a very large
+%% number of variables possibly with bound constraints.
 %%
 %% The method has two required arguments: `fg` the function to call to compute
 %% the objective function and its gradient and `x0` the initial variables
@@ -23,12 +23,13 @@
 %%
 %% The function `fg` shall be implemented as follows:
 %%
-%%     function [fx, gx] = fg(x)
-%%         fx = ...; // value of the objective function at `x`
-%%         gx = ...: // gradient of the objective function at `x`
+%%     function [f, g] = fg(x)
+%%         f = ...; // value of the objective function at `x`
+%%         g = ...: // gradient of the objective function at `x`
 %%     end
 %%
-%% All other settings are specified by keywords:
+%% All other settings are specified by keyword names followed by their value
+%% (e.g.. `'key',val`), possible keywords are listed below.
 %%
 %% - Keywords `upper` and `lower` are to specify a lower and/or an upper bounds
 %%   for the variables.  If unspecified or set to an empty array, a given bound
@@ -37,8 +38,8 @@
 %%
 %% - Keyword `mem` specifies the memory used by the algorithm, that is the
 %%   number of previous steps memorized to approximate the Hessian of the
-%%   objective function.  With `mem=0`, the algorithm
-%%   behaves as a steepest descent method.  The default is `mem=5`.
+%%   objective function.  With `mem=0`, the algorithm behaves as a steepest
+%%   descent method.  The default is `mem=5`.
 %%
 %% - Keywords `ftol`, `gtol` and `xtol` specify tolerances for deciding the
 %%   convergence of the algorithm.
@@ -112,12 +113,6 @@
 %%
 %%  - Keyword `verb`, if positive, specifies to print information every `verb`
 %%    iterations.  Nothing is printed if `verb ≤ 0`.  By default, `verb = 0`.
-%%
-%% - Keyword `throwerrors` (true by default), specifies whether to call `error`
-%%   in case of errors instead or returning a `status` indicating the problem.
-%%   Note that early termination due to limits set on the number of iterations
-%%   or of evaluations of the objective function are not considereed as an
-%%   error.
 
 function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
     if nargin < 2
@@ -279,7 +274,7 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
         %% Make the variables feasible.
         if bounded
             %% In principle, we can avoid projecting the variables whenever
-            %% `alpha ≤ amin` (because the fesible set is convex) but rounding
+            %% `alpha ≤ amin` (because the feasible set is convex) but rounding
             %% errors could make this wrong.  It is safer to always project the
             %% variables.  This cost O(n) operations which are probably
             %% negligible compared to, say, computing the objective function
@@ -372,7 +367,8 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
         if stage ~= 1
             %% Possibly print iteration information.
             if verb > 0 && mod(iters, verb) == 0
-                print_iteration(iters, time() - t0, evals, rejects, f, gnorm, alpha);
+                print_iteration(iters, time() - t0, evals, rejects, ...
+                                f, gnorm, alpha);
                 last_print = iters;
             end
             if stage ~= 0
@@ -511,7 +507,8 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
     end
     if verb > 0
         if iters > last_print
-            print_iteration(iters, time() - t0, evals, rejects, f, gnorm, alpha);
+            print_iteration(iters, time() - t0, evals, rejects, ...
+                            f, gnorm, alpha);
             last_print = iters;
         end
         fprintf('# Termination: %s\n', optm_reason(status));

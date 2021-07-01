@@ -1,7 +1,7 @@
 # VMLMB for Yorick
 
 `VMLMB` is an algorithm to minimize a multi-variate differentiable objective
-function possibly under separble bound constraints.  `VMLMB` is a quasi-Newton
+function possibly under separable bound constraints.  `VMLMB` is a quasi-Newton
 method ("VM" is for "Variable Metric") with low memory requirements ("LM" is
 for "Limited Memory") and which can optionally take into account separable
 bound constraints (the final "B") on the variables.  To determine efficient
