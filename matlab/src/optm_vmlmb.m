@@ -314,7 +314,7 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
             if bounded
                 %% Determine the subset of free variables and compute the norm
                 %% of the projected gradient (needed to check for convergence).
-                freevars = optm_active_variables(x, lower, upper, g);
+                freevars = optm_unblocked_variables(x, lower, upper, g);
                 pg = freevars .* g;
                 gnorm = optm_norm2(pg);
                 if ~blmvm
@@ -490,9 +490,9 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
             if best_gnorm >= 0
                 gnorm = best_gnorm;
             else
-                %% Compute the norm of the (projected) gradient.
+                %% Re-compute the norm of the (projected) gradient.
                 if bounded
-                    freevars = optm_active_variables(x, lower, upper, g);
+                    freevars = optm_unblocked_variables(x, lower, upper, g);
                     gnorm = optm_norm2(g .* freevars);
                 else
                     gnorm = optm_norm2(g);

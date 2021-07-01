@@ -805,7 +805,7 @@ func optm_clamp(x, xmin, xmax)
      It is the caller's responsibility to ensure that the bounds are
      compatible, in other words that `xmin ≤ xmax` holds.
 
-   SEE ALSO: optm_active_variables and optm_line_search_limits.
+   SEE ALSO: optm_unblocked_variables and optm_line_search_limits.
  */
 {
     if (!is_void(xmin)) {
@@ -817,8 +817,8 @@ func optm_clamp(x, xmin, xmax)
     return x;
 }
 
-func optm_active_variables(x, xmin, xmax, g)
-/* DOCUMENT msk = optm_active_variables(x, xmin, xmax, g);
+func optm_unblocked_variables(x, xmin, xmax, g)
+/* DOCUMENT msk = optm_unblocked_variables(x, xmin, xmax, g);
 
      Build a logical mask `msk` of the same size as `x` indicating which
      entries in `x` are not blocked by the bounds `xmin` and `xmax` when
@@ -878,7 +878,7 @@ func optm_line_search_limits(&amin, &amax, x0, xmin, xmax, d, dir)
      Restrictions: `x0` must be feasible and must have the same size as `d`;
      this is not verified for efficiency reasons.
 
-   SEE ALSO: optm_clamp and optm_active_variables.
+   SEE ALSO: optm_clamp and optm_unblocked_variables.
  */
 {
     INF = OPTM_INFINITE; // for nicer code ;-)
@@ -1227,7 +1227,7 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
             if (bounded) {
                 // Determine the subset of free variables and compute the norm
                 // of the projected gradient (needed to check for convergence).
-                freevars = optm_active_variables(x, lower, upper, g);
+                freevars = optm_unblocked_variables(x, lower, upper, g);
                 pg = freevars*g;
                 gnorm = optm_norm2(pg);
                 if (!blmvm) {
@@ -1396,9 +1396,9 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
             if (best_gnorm >= 0) {
                 gnorm = best_gnorm;
             } else {
-                // Compute the norm of the (projected) gradient.
+                // Re-compute the norm of the (projected) gradient.
                 if (bounded) {
-                    freevars = optm_active_variables(x, lower, upper, g);
+                    freevars = optm_unblocked_variables(x, lower, upper, g);
                     gnorm = optm_norm2(g*freevars);
                 } else {
                     gnorm = optm_norm2(g);
