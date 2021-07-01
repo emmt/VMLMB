@@ -26,9 +26,21 @@ The repository is organized as follows:
 
 - Directory [`data`](./data) contains data for tests and examples.
 
-- Directory [`matlab`](./matlab) contains a pure Matlab/Octave version of `VMLMB`.
+- Directory [`matlab`](./matlab) contains a pure Matlab/Octave version of
+  `VMLMB`.  To use the provided optimization methods, it is sufficient to add
+  directory [`./matlab/src`](./matlab/src) to your path (see `addpath`
+  function).  All *public* functions are prefixed by `optm_` to avoid name
+  collisions.  See code in [`test_deconv.m`](./matlab/test/test_deconv.m) for a
+  detailed example of usage of `optm_conjgrad` (linear conjugate gradient) and
+  `optm_vmlmb` (variable metric, limited memory, with bounds) optimizers.
 
 - Directory [`yorick`](./yorick) contains a pure Yorick version of `VMLMB`.
+  All optimization methods are in [`optm.i`](./yorick/optm.i) which may be
+  installed in any of the directories searched by Yorick (see `get_path` and
+  `set_path` functions).  to avoid name collisions, all *public*
+  functions/variables are prefixed by `optm_` and all *private*
+  functions/variables are prefixed by `_optm_`.  The [`yorick`](./yorick)
+  directory also contains various examples and demonstrations.
 
 
 ## References
