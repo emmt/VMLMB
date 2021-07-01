@@ -692,9 +692,10 @@ func optm_apply_lbfgs(lbfgs, d, &scaled, freevars)
      Argument `lbfgs` is the structure storing the L-BFGS data.
 
      Optional argument `freevars` is to restrict the L-BFGS approximation to
-     the sub-space spanned by the "free variables".  If specified and not
-     empty, `freevars` shall have the size as `d` and shall be equal to zero
-     where variables are blocked and to one elsewhere.
+     the sub-space spanned by the "free variables" not blocked by the
+     constraints.  If specified and not empty, `freevars` shall have the size
+     as `d` and shall be equal to zero where variables are blocked and to one
+     elsewhere.
 
      On return, output variable `scaled` indicates whether any curvature
      information was taken into account.  If `scaled` is false, it means that
@@ -705,20 +706,18 @@ func optm_apply_lbfgs(lbfgs, d, &scaled, freevars)
  */
 {
     // Variables.
-    local S, Y, alpha, rho, gamma, msk;
+    local S, Y, alpha, rho, gamma;
 
     // Determine the number of variables and of free variables.
-    if (is_void(freevars) || allof(freevars)) {
+    if (is_void(freevars) || min(freevars) != 0) {
         // All variables are free.
         regular = 1n;
     } else {
         // Convert `freevars` in an array of weights of suitable type.
         regular = 0n;
         T = (structof(d) == float ? float : double);
-        if (structof(freevars) == T) {
-            eq_nocopy, msk, freevars;
-        } else {
-            msk = T(freevars);
+        if (structof(freevars) != T) {
+            freevars = T(freevars);
         }
     }
 
@@ -740,7 +739,7 @@ func optm_apply_lbfgs(lbfgs, d, &scaled, freevars)
         for (j = 1; j <= mp; ++j) {
             i = (off - j)%m + 1;
             alpha_i = optm_inner(d, *S(i))/rho(i);
-            optm_update, d, -alpha_i, *Y(i); // d -= alpha_i*(*Y(i));
+            optm_update, d, -alpha_i, *Y(i);
             alpha(i) = alpha_i;
         }
         if (gamma > 0 && gamma != 1) {
@@ -749,7 +748,7 @@ func optm_apply_lbfgs(lbfgs, d, &scaled, freevars)
         for (j = mp; j >= 1; --j) {
             i = (off - j)%m + 1;
             beta = optm_inner(d, *Y(i))/rho(i);
-            optm_update, d, alpha(i) - beta, *S(i); // d += (alpha(i) - beta)*(*S(i));
+            optm_update, d, alpha(i) - beta, *S(i);
         }
     } else {
         // L-BFGS recursion on a subset of free variables specified by a
@@ -757,18 +756,18 @@ func optm_apply_lbfgs(lbfgs, d, &scaled, freevars)
         local s_i, y_i;
         rho = array(double, m);
         gamma = 0.0;
-        d *= msk; // restrict argument to the subset of free variables
+        d *= freevars; // restrict argument to the subset of free variables
         for (j = 1; j <= mp; ++j) {
             i = (off - j)%m + 1;
             eq_nocopy, s_i, *S(i);
-            y_i = msk*(*Y(i));
+            y_i = freevars*(*Y(i));
             rho_i = optm_inner(s_i, y_i);
             if (rho_i > 0) {
                 if (gamma <= 0.0) {
                     gamma = rho_i/optm_inner(y_i, y_i);
                 }
                 alpha_i = optm_inner(d, s_i)/rho_i;
-                optm_update, d, -alpha_i, y_i; // d -= alpha_i*y_i;
+                optm_update, d, -alpha_i, y_i;
                 alpha(i) = alpha_i;
                 rho(i) = rho_i;
             }
@@ -782,7 +781,7 @@ func optm_apply_lbfgs(lbfgs, d, &scaled, freevars)
             rho_i = rho(i);
             if (rho_i > 0) {
                 beta = optm_inner(d, *Y(i))/rho_i;
-                optm_update, d, alpha(i) - beta, msk*(*S(i)); // d += (alpha(i) - beta)*msk*(*S(i));
+                optm_update, d, alpha(i) - beta, freevars*(*S(i));
             }
         }
     }
@@ -831,19 +830,23 @@ func optm_unblocked_variables(x, xmin, xmax, g)
      and that the variables are feasible, in other words that `xmin ≤ x ≤ xmax`
      holds.
 
+     The type of of the entries of `msk` is `float` if `x` and `g` are single
+     precision floating-point, `double` otherwise.
+
    SEE ALSO: optm_clamp and optm_line_search_limits.
  */
 {
+    T = (structof(x) == float && structof(g) == float ? float : double);
     if (is_void(xmin)) {
         if (is_void(xmax)) {
-            return array(1n, dimsof(x));
+            return array(T(1), dimsof(x));
         } else {
-            return (x < xmax)|(g > 0);
+            return T((x < xmax)|(g > 0));
         }
     } else if (is_void(xmax)) {
-        return (x > xmin)|(g < 0);
+        return T((x > xmin)|(g < 0));
     } else {
-        return ((x > xmin)|(g < 0))&((x < xmax)|(g > 0));
+        return T(((x > xmin)|(g < 0))&((x < xmax)|(g > 0)));
     }
 }
 
