@@ -85,8 +85,8 @@ func optm_conjgrad(A, b, x0, &status, precond=, maxiter=, restart=, verb=,
      - Keyword `restart` is to specify the number of consecutive iterations
        before restarting the conjugate gradient recurrence.  Restarting the
        algorithm is to cope with the accumulation of rounding errors.  By
-       default, `restart = min(50,numel(x)+1)`.  Set `restart` to a value less
-       or equal zero or greater than `maxiter` if you do not want that any
+       default, `restart = min(50,numberof(x)+1)`.  Set `restart` to a value
+       less or equal zero or greater than `maxiter` if you do not want that any
        restarts ever occur.
 
      - Keyword `verb`, if positive, specifies to print information every `verb`
@@ -140,19 +140,19 @@ func optm_conjgrad(A, b, x0, &status, precond=, maxiter=, restart=, verb=,
      The function retuns the solution `x` and set optional output variable
      `status` with one of the following termination codes:
 
-     * `status = OPTM_NOT_POSITIVE_DEFINITE` if the left-hand-side matrix `A`
+     - `status = OPTM_NOT_POSITIVE_DEFINITE` if the left-hand-side matrix `A`
        is found to be not positive definite;
 
-     * `status = OPTM_TOO_MANY_ITERATIONS` if the maximum number of iterations
+     - `status = OPTM_TOO_MANY_ITERATIONS` if the maximum number of iterations
        have been reached;
 
-     * `status = OPTM_FTEST_SATISFIED` if convergence occurred because the
+     - `status = OPTM_FTEST_SATISFIED` if convergence occurred because the
        function reduction satisfies the criterion specified by `ftol`;
 
-     * `status = OPTM_GTEST_SATISFIED` if convergence occurred because the
+     - `status = OPTM_GTEST_SATISFIED` if convergence occurred because the
        gradient norm satisfies the criterion specified by `gtol`;
 
-     * `status = OPTM_XTEST_SATISFIED` if convergence occurred because the norm
+     - `status = OPTM_XTEST_SATISFIED` if convergence occurred because the norm
        of the variation of variables satisfies the criterion specified by
        `xtol`.
 
@@ -166,11 +166,10 @@ func optm_conjgrad(A, b, x0, &status, precond=, maxiter=, restart=, verb=,
     preconditioned = !is_void(precond);
     if (is_void(ftol)) ftol = 1.0E-8;
     if (is_void(gtol)) gtol = 1.0E-5;
-    if (is_void(xtol)) xtol = 0.0;
-    if (is_void(xrtol)) xrtol = 1.0E-6;
+    if (is_void(xtol)) xtol = 1.0E-6;
     if (is_void(verb)) verb = 0;
     if (is_void(maxiter)) maxiter = 2*numberof(b) + 1;
-    if (is_void(restart)) restart = 50;
+    if (is_void(restart)) restart = min(50, numberof(x) + 1);
     if (is_scalar(ftol)) {
         fatol = 0.0;
         frtol = ftol;
@@ -324,7 +323,7 @@ func _optm_conjgrad_printer
     t = (elapsed(3) - t0)*1E3; // elapsed time in ms
     if (preconditioned) {
         if (k == 0) {
-            write, output, format="%s%s\n%s%s\n",
+            write, output, format="%s\n%s\n",
                 "# Iter.   Time (ms)     Δf(x)       ‖∇f(x)‖     ‖∇f(x)‖_M",
                 "# ---------------------------------------------------------";
         }
@@ -949,23 +948,24 @@ func optm_line_search_limits(&amin, &amax, x0, xmin, xmax, d, dir)
 //-----------------------------------------------------------------------------
 // OPTIMIZATION METHODS
 func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
-                delta=, epsilon=, lambda=, ftol=, gtol=, xtol=,
-                blmvm=, maxiter=, maxeval=, verb=, output=, throwerrors=)
+                delta=, epsilon=, lambda=, ftol=, gtol=, xtol=, blmvm=,
+                maxiter=, maxeval=, verb=, output=, cputime=, throwerrors=)
 /* DOCUMENT x = optm_vmlmb(fg, x0, [f, g, status,] lower=, upper=, mem=);
 
      Apply VMLMB algorithm to minimize a multi-variate differentiable objective
-     function possibly under separble bound constraints.  VMLMB is a
+     function possibly under separable bound constraints.  VMLMB is a
      quasi-Newton method ("VM" is for "Variable Metric") with low memory
      requirements ("LM" is for "Limited Memory") and which can optionally take
      into account separable bound constraints (the final "B") on the variables.
-     To determine efficient search directions, VMLMB approximates the Hessian
-     of the objective function by a a limited memory version of the
-     Broyden-Fletcher-Goldfarb-Shanno model (L-BFGS for short).  Hence VMLMB is
-     well suited to solving optimization problems with a very large number of
-     variables possibly with bound constraints.
 
-     The method has two required arguments: `fg` the function to call to
-     compute the objective function and its gradient and `x0` the initial
+     To determine efficient search directions, VMLMB approximates the Hessian
+     of the objective function by a limited memory version of the model assumed
+     in Broyden-Fletcher-Goldfarb-Shanno algorithm (called L-BFGS for short).
+     Hence VMLMB is well suited to solving optimization problems with a very
+     large number of variables possibly with bound constraints.
+
+     The method has two required arguments: `fg`, the function to call to
+     compute the objective function and its gradient, and `x0`, the initial
      variables (VMLMB is an iterative method).  The initial variables may be an
      array of any dimensions.
 
@@ -977,11 +977,11 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
 
      The function `fg` shall be implemented as follows:
 
-         func fg(x, &gx)
+         func fg(x, &g)
          {
-             fx = ...; // value of the objective function at `x`
-             gx = ...; // gradient of the objective function at `x`
-             return fx;
+             f = ...; // value of the objective function at `x`
+             g = ...; // gradient of the objective function at `x`
+             return f;
          }
 
      Arguments `f`, `g` and `status` are optional output variables to store the
@@ -1075,13 +1075,16 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
      - Keyword `verb`, if positive, specifies to print information every `verb`
        iterations.  Nothing is printed if `verb ≤ 0`.  By default, `verb = 0`.
 
+     - If keyword `cputime` is true, print the CPU time instead of the WALL
+       time.
+
      - Keyword `output` specifies the file stream to print information.
 
      - Keyword `throwerrors` (true by default), specifies whether to call
        `error` in case of errors instead or returning a `status` indicating the
        problem.  Note that early termination due to limits set on the number of
        iterations or of evaluations of the objective function are not
-       considereed as an error.
+       considered as an error.
  */
 {
     // Constants.
@@ -1168,9 +1171,10 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
     freevars = [];   // subset of free variables (not yet known)
     lbfgs = optm_new_lbfgs(mem);
     if (verb > 0) {
+        time_index = (cputime ? 1 : 3);
         elapsed = array(double, 3);
         timer, elapsed;
-        t0 = elapsed(3);
+        t0 = elapsed(time_index);
     }
 
     // Algorithm stage follows that of the line-search, it is one of:
@@ -1183,7 +1187,7 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
         // Make the variables feasible.
         if (bounded) {
             // In principle, we can avoid projecting the variables whenever
-            // `alpha ≤ amin` (because the fesible set is convex) but rounding
+            // `alpha ≤ amin` (because the feasible set is convex) but rounding
             // errors could make this wrong.  It is safer to always project the
             // variables.  This cost O(n) operations which are probably
             // negligible compared to, say, computing the objective function
@@ -1349,7 +1353,8 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
                 // descent direction `d`.  Note that `gnorm`, the Euclidean
                 // norm of the (projected) gradient, is also that of `d` in
                 // that case.
-                alpha = optm_steepest_descent_step(x, gnorm, f, fmin, delta, lambda);
+                alpha = optm_steepest_descent_step(x, gnorm, f, fmin,
+                                                   delta, lambda);
             }
             if (bounded) {
                 // Safeguard the step to avoid searching in a region where
@@ -1419,7 +1424,7 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
 func _optm_vmlmb_print
 {
     timer, elapsed;
-    t = (elapsed(3) - t0)*1E3; // elapsed milliseconds
+    t = (elapsed(time_index) - t0)*1E3; // elapsed milliseconds
     if (iters < 1) {
         write, output, format="%s%s\n%s%s\n",
             "# Iter.   Time (ms)    Eval. Reject.",
