@@ -18,13 +18,13 @@ function msk = optm_unblocked_variables(x, xmin, xmax, g)
     end
     if isempty(xmin)
         if isempty(xmax)
-            msk = true(size(x));
+            msk = (g ~= 0);
         else
-            msk = (x < xmax)|(g > 0);
+            msk = (g > 0)|((g < 0)&(x < xmax));
         end
     elseif isempty(xmax)
-        msk = (x > xmin)|(g < 0);
+        msk = ((g > 0)&(x > xmin))|(g < 0);
     else
-        msk = ((x > xmin)|(g < 0))&((x < xmax)|(g > 0));
+        msk = ((g > 0)&(x > xmin))|((g < 0)&(x < xmax));
     end
 end
