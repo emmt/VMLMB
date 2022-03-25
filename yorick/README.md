@@ -39,15 +39,15 @@ arguments and keywords
 
 ## Installation
 
-Installation is straightforward: copy file [`otm.i`](./optm.i) in some suitable
-directory like `~/Yorick` where it can be found by Yorick's `include` or
-`require` built-in functions.
+Installation is straightforward: copy file [`optm.i`](./optm.i) in some
+suitable directory like `~/Yorick` where it can be found by Yorick's `include`
+or `require` built-in functions.
 
-For an all-user installation, copy [`otm.i`](./optm.i) in directory
+For an all-user installation, copy [`optm.i`](./optm.i) in directory
 `${Y_SITE}/i` or `${Y_SITE}/i0` and [`optm_start.i`](./optm_start.i) in
 `${Y_SITE}/i-start` directory where `${Y_SITE}` is Yorick's "*site directory*"
-(where Yorick's platform independent files are stored).  This may be automated by
-calling the [`configure`](./configure) script and then `make install`:
+(where Yorick's platform independent files are stored).  This may be automated
+by calling the [`configure`](./configure) script and then `make install`:
 
 ```.sh
 ./configure

@@ -1633,6 +1633,9 @@ func optm_override_functions(mode)
      If `mode = "slow"`, use slower interpreted functions to perform basic
      linear algebra operations.
 
+     If `mode = "tryfast"`, then the fast version is used if the `vops.i`
+     plug-in is available and the slow version is used otherwise.
+
    SEE ALSO: optm_inner, optm_norm1, optm_norm2, optm_norminf, optm_scale,
              optm_update.
  */
