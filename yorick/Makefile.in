@@ -15,7 +15,7 @@ PKG_NAME=optm
 PKG_I= $(srcdir)/optm.i
 
 # autoload file for this package, if any
-PKG_I_START = $(srcdir)/optm-start.i
+PKG_I_START = $(srcdir)/optm_start.i
 
 # non-pkg.i include files for this package, if any
 PKG_I_EXTRA =

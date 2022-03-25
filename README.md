@@ -5,11 +5,11 @@ in various high-level programming languages.
 
 `VMLMB` (for *Variable Metric Limited Memory with Bounds*) is a quasi-Newton
 optimization method with small memory requirements and which may take into
-account for separable bound constraints.  This algorithm is of particular
-interest for minimizing a smooth cost function of a potentially very large
-number of variables (millions or billions) and under bound constraints.
-`VMLMB` has been successfully used to solve many different kinds of problems
-notably image restoration in *inverse problems* framework.
+account separable bound constraints.  This algorithm is of particular interest
+for minimizing a smooth cost function of a potentially very large number of
+variables (millions or billions) possibly under bound constraints.  `VMLMB` has
+been successfully used to solve many different kinds of problems notably image
+restoration in *inverse problems* framework.
 
 The objective of this repository is to provide algorithms that:
 * run out of the box (no additional libraries needed);
@@ -26,13 +26,15 @@ The repository is organized as follows:
 
 - Directory [`data`](./data) contains data for tests and examples.
 
-- Directory [`matlab`](./matlab) contains a pure Matlab/Octave version of
-  `VMLMB`.  To use the provided optimization methods, it is sufficient to add
-  directory [`./matlab/src`](./matlab/src) to your path (see `addpath`
-  function).  All *public* functions are prefixed by `optm_` to avoid name
-  collisions.  See code in [`test_deconv.m`](./matlab/test/test_deconv.m) for a
-  detailed example of usage of `optm_conjgrad` (linear conjugate gradient) and
-  `optm_vmlmb` (variable metric, limited memory, with bounds) optimizers.
+- Directory [`matlab`](./matlab) contains a pure
+  [MATLAB](https://www.mathworks.com)/[GNU
+  Octave](https://www.gnu.org/software/octave) version of `VMLMB`.  To use the
+  provided optimization methods, it is sufficient to add directory
+  [`./matlab/src`](./matlab/src) to your path (see `addpath` function).  All
+  *public* functions are prefixed by `optm_` to avoid name collisions.  See code
+  in [`test_deconv.m`](./matlab/test/test_deconv.m) for a detailed example of
+  usage of `optm_conjgrad` (linear conjugate gradient) and `optm_vmlmb`
+  (variable metric, limited memory, with bounds) optimizers.
 
 - Directory [`yorick`](./yorick) contains a pure Yorick version of `VMLMB`.
   All optimization methods are in [`optm.i`](./yorick/optm.i) which may be

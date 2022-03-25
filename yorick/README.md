@@ -34,7 +34,7 @@ func fg(x, &gx)
 ```
 
 See the documentation (`help, optm_vmlmb`) for a description of optional
-arguments and keywords
+arguments and keywords.
 
 
 ## Installation
@@ -59,6 +59,16 @@ to print a short help message.  The most important option is `--yorick=${EXE}`
 to specify that `${EXE}` is the path of Yorick's executable.
 
 
+## Speed-up
+
+Although `VMLMB` for Yorick is pure Yorick code, it will run faster if the
+plugin [yor-vops](https://github.com/emmt/yor-vops) implementing vectorized
+operations for Yorick is installed.  When this plugin is installed, `VMLMB`
+should be able to use it automatically.  You may call the function
+`optm_override_functions` to toggle the usage of vectorized operations and
+compare the results.
+
+
 ## References
 
 * É. Thiébaut, "*Optimization issues in blind deconvolution algorithms*," in
@@ -69,7 +79,7 @@ to specify that `${EXE}` is the path of Yorick's executable.
 
 `VMLMB` is licensed under the MIT "Expat" License:
 
-> Copyright (c) 2002-2021: Éric Thiébaut
+> Copyright (c) 2002-2022: Éric Thiébaut
 
 > Permission is hereby granted, free of charge, to any person obtaining
 > a copy of this software and associated documentation files (the
