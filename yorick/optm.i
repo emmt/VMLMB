@@ -821,14 +821,15 @@ func optm_unblocked_variables(x, xmin, xmax, g)
 
      Build a logical mask `msk` of the same size as `x` indicating which
      entries in `x` are not blocked by the bounds `xmin` and `xmax` when
-     minimizing an objective function whose gradient is `g` at `x`.
+     minimizing an objective function whose gradient is `g` at `x`.  In other
+     words, the mask is false everywhere K.K.T. conditions are satisfied.
 
      Empty bounds, that is `xmin = []` or `xmax = []`, are interpreted as
      unlimited (as if `xmin = -Inf` and `xmax = +Inf`).
 
      It is the caller's responsibility to ensure that the bounds are compatible
      and that the variables are feasible, in other words that `xmin ≤ x ≤ xmax`
-     holds.
+     holds element-wise.
 
      The type of of the entries of `msk` is `float` if `x` and `g` are single
      precision floating-point, `double` otherwise.
@@ -836,17 +837,21 @@ func optm_unblocked_variables(x, xmin, xmax, g)
    SEE ALSO: optm_clamp and optm_line_search_limits.
  */
 {
-    T = (structof(x) == float && structof(g) == float ? float : double);
+    T = structof(g);
+    zero = T(0);
+    T = (T == float && structof(x) == float ? float : double);
     if (is_void(xmin)) {
         if (is_void(xmax)) {
-            return array(T(1), dimsof(x));
+            return T(g != zero);
         } else {
-            return T((x < xmax)|(g > 0));
+            return T((g > zero)|((g < zero)&(x < xmax)));
         }
-    } else if (is_void(xmax)) {
-        return T((x > xmin)|(g < 0));
     } else {
-        return T(((x > xmin)|(g < 0))&((x < xmax)|(g > 0)));
+        if (is_void(xmax)) {
+            return T(((g > zero)&(x > xmin))|(g < zero));
+        } else {
+            return T(((g > zero)&(x > xmin))|((g < zero)&(x < xmax)));
+        }
     }
 }
 
