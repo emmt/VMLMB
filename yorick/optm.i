@@ -1493,7 +1493,7 @@ func _optm_vmlmb_printer(output, iters, evals, rejects, t, x, f, g, gpnorm,
             "-----------------------------------------------";
     }
     write, output, format="%7d %11.3f %7d %7d %23.15e %11.3e %11.3e\n",
-        iters, t, evals, rejects, f, gnorm, alpha;
+        iters, t*1e3, evals, rejects, f, gnorm, alpha;
 }
 
 //-----------------------------------------------------------------------------
