@@ -10,7 +10,7 @@
 %% It may be a function name or handle and is called as `A(x)` to compute the
 %% result of `A*x`.
 %%
-%% Note that, as `A` and the preconditioned `M` must be symmetric, it may be
+%% Note that, as `A` and the preconditioner `M` must be symmetric, it may be
 %% faster to apply their adjoint.
 %%
 %% Argument `b` is the *right-hand-side (RHS) vector* of the equations.

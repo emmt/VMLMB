@@ -252,6 +252,7 @@ func optm_conjgrad(A, b, x0, &status, precond=, maxiter=, restart=, verb=,
         }
         if (preconditioned) {
             // Apply preconditioner `z = M⋅r`.
+            z = precond(r);
         } else {
             // No preconditioner `z = I⋅r = r`.
             eq_nocopy, z, r;
