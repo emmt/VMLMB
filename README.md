@@ -1,7 +1,7 @@
 # The VMLMB algorithm for large scale optimization with bound constraints
 
-This repository provides implementations of the `VMLMB` algorithm
-in various high-level programming languages.
+This repository provides implementations of the `VMLMB` algorithm in various
+high-level programming languages.
 
 `VMLMB` (for *Variable Metric Limited Memory with Bounds*) is a quasi-Newton
 optimization method with small memory requirements and which may take into
@@ -24,10 +24,8 @@ The objective of this repository is to provide algorithms that:
 
 The repository is organized as follows:
 
-- Directory [`data`](./data) contains data for tests and examples.
-
 - Directory [`matlab`](./matlab) contains a pure
-  [MATLAB](https://www.mathworks.com)/[GNU
+  [Matlab](https://www.mathworks.com)/[GNU
   Octave](https://www.gnu.org/software/octave) version of `VMLMB`.  To use the
   provided optimization methods, it is sufficient to add directory
   [`./matlab/src`](./matlab/src) to your path (see `addpath` function).  All
@@ -36,16 +34,17 @@ The repository is organized as follows:
   usage of `optm_conjgrad` (linear conjugate gradient) and `optm_vmlmb`
   (variable metric, limited memory, with bounds) optimizers.
 
-- Directory [`yorick`](./yorick) contains a pure Yorick version of `VMLMB`.
-  All optimization methods are in [`optm.i`](./yorick/optm.i) which may be
-  installed in any of the directories searched by Yorick (see `get_path` and
-  `set_path` functions).  to avoid name collisions, all *public*
-  functions/variables are prefixed by `optm_` and all *private*
-  functions/variables are prefixed by `_optm_`.  The [`yorick`](./yorick)
-  directory also contains various examples and demonstrations.
+- Directory [`yorick`](./yorick) contains a pure
+  [Yorick](https://github.com/LLNL/yorick) version of `VMLMB`. See file
+  [yorick/README.md](./yorick/README.md) for installation and usage
+  instructions.
 
 
 ## References
 
-* É. Thiébaut, "*Optimization issues in blind deconvolution algorithms*," in
+- Hestenes, M. R. & Stiefel, E. "*Methods of Conjugate Gradients for Solving
+  Linear Systems*," in Journal of Research of the National Bureau of Standards,
+  **49**, pp. 409-436 (1952).
+
+- É. Thiébaut, "*Optimization issues in blind deconvolution algorithms*," in
   Astronomical Data Analysis II, SPIE Proc. **4847**, 174-183 (2002).

@@ -1,17 +1,25 @@
 # VMLMB for Yorick
 
+This directory contains the code of a pure
+[Yorick](https://github.com/LLNL/yorick) implementation of `VMLMB` and of the
+linear conjugate gradient method (for unconstrained linear problems). To avoid
+name collisions, all *public* functions/variables are prefixed by `optm_` and
+all *private* functions/variables are prefixed by `_optm_`.
+
 `VMLMB` is an algorithm to minimize a multi-variate differentiable objective
 function possibly under separable bound constraints.  `VMLMB` is a quasi-Newton
 method ("VM" is for "Variable Metric") with low memory requirements ("LM" is
 for "Limited Memory") and which can optionally take into account separable
 bound constraints (the final "B") on the variables.  To determine efficient
 search directions, `VMLMB` approximates the Hessian of the objective function
-by a a limited memory version of the Broyden-Fletcher-Goldfarb-Shanno model
+by a limited memory version of the Broyden-Fletcher-Goldfarb-Shanno model
 (L-BFGS for short).  Hence `VMLMB` is well suited to solving optimization
 problems with a very large number of variables possibly with bound constraints.
 
-This directory contains the code for a pure Yorick implementation of `VMLMB`.
-To run the algorithm, call:
+
+## Usage
+
+To run the `VMLMB` algorithm, call:
 
 ```.c
 x = optm_vmlmb(fg, x0, lower=..., upper=...);
@@ -19,10 +27,10 @@ x = optm_vmlmb(fg, x0, lower=..., upper=...);
 
 with `fg` the Yorick function which computes the objective function and its
 gradient and `x0` the initial variables.  The initial variables may be an array
-of any dimensions.  The method returns `x` the best solution found during
+of any dimensions.  The method returns `x`, the best solution found during
 iterations.  Keywords `lower` and `upper` may be used to specify bounds on the
 variables.  The function `fg` shall be implemented as follows (note that
-argument `gx` is an ouput variable to store the gradient):
+argument `gx` is an output variable to store the gradient):
 
 ```.c
 func fg(x, &gx)
@@ -39,15 +47,15 @@ arguments and keywords.
 
 ## Installation
 
-Installation is straightforward: copy file [`optm.i`](./optm.i) in some
-suitable directory like `~/Yorick` where it can be found by Yorick's `include`
-or `require` built-in functions.
+Installation is straightforward: copy file [`optm.i`](./optm.i) in any of the
+directories searched by Yorick like `~/Yorick` (see `get_path` and `set_path`
+functions).
 
-For an all-user installation, copy [`optm.i`](./optm.i) in directory
-`${Y_SITE}/i` or `${Y_SITE}/i0` and [`optm_start.i`](./optm_start.i) in
-`${Y_SITE}/i-start` directory where `${Y_SITE}` is Yorick's "*site directory*"
-(where Yorick's platform independent files are stored).  This may be automated
-by calling the [`configure`](./configure) script and then `make install`:
+For a full installation, copy [`optm.i`](./optm.i) in directory `${Y_SITE}/i`
+or `${Y_SITE}/i0` and [`optm_start.i`](./optm_start.i) in `${Y_SITE}/i-start`
+directory where `${Y_SITE}` is Yorick's "*site directory*" (where Yorick's
+platform independent files are stored).  This may be automated by calling the
+[`configure`](./configure) script and then `make install`:
 
 ```.sh
 ./configure
@@ -57,6 +65,14 @@ make install
 The [`configure`](./configure) script can be called with flags `-h` or `--help`
 to print a short help message.  The most important option is `--yorick=${EXE}`
 to specify that `${EXE}` is the path of Yorick's executable.
+
+To test the software, run:
+
+```.sh
+make tests
+```
+
+after the configuration step (no needs to install).
 
 
 ## Speed-up
@@ -71,7 +87,11 @@ compare the results.
 
 ## References
 
-* É. Thiébaut, "*Optimization issues in blind deconvolution algorithms*," in
+- Hestenes, M. R. & Stiefel, E. "*Methods of Conjugate Gradients for Solving
+  Linear Systems*," in Journal of Research of the National Bureau of Standards,
+  **49**, pp. 409-436 (1952).
+
+- É. Thiébaut, "*Optimization issues in blind deconvolution algorithms*," in
   Astronomical Data Analysis II, SPIE Proc. **4847**, 174-183 (2002).
 
 
