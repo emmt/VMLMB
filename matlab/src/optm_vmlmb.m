@@ -24,8 +24,8 @@
 %% The function `fg` shall be implemented as follows:
 %%
 %%     function [f, g] = fg(x)
-%%         f = ...; // value of the objective function at `x`
-%%         g = ...: // gradient of the objective function at `x`
+%%         f = ...; % value of the objective function at `x`
+%%         g = ...: % gradient of the objective function at `x`
 %%     end
 %%
 %% All other settings are specified by keyword names followed by their value
