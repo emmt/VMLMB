@@ -90,6 +90,7 @@ uninstall:
 
 clean:
 	rm -f *~ core* *.core
+	rm -f *.out-notime *.new-notime
 
 release: $(RELEASE_NAME)
 
@@ -123,6 +124,18 @@ $(RELEASE_NAME):
 	  fi; \
 	fi;
 
-.PHONY: clean release all install uninstall default
+tests:
+	@echo "Running tests in \"optm_tests.i\"..."; \
+	$(Y_EXE) -batch optm_tests.i; \
+	echo
+	@echo "Running tests from MINPACK-1 Project..."; \
+	for x in optm_minpack1; do \
+	    $(Y_EXE) -batch "$$x.i" > "$$x.new"; \
+	    sed -e 's/^\( *[0-9]*\) *[^ ]*/\1/' <"$$x.new" >"$$x.new-notime"; \
+	    sed -e 's/^\( *[0-9]*\) *[^ ]*/\1/' <"$$x.out" >"$$x.out-notime"; \
+	    diff "$$x.out-notime" "$$x.new-notime"; \
+	done
+
+.PHONY: clean release all install uninstall default tests
 
 # -------------------------------------------------------- end of Makefile
