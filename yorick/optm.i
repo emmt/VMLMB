@@ -1,7 +1,18 @@
 // optm.i -
 //
-// Multi-dimensional optimization for Yorick.
+// Pure Yorick implementations of the linear conjugate gradients (for solving
+// uncontrained linear optimization problems) and VMLMB (for solving non-linear
+// of bound constrained optimization problems).  VMLMB is a quasi-Newton method
+// ("VM" is for "Variable Metric") with low memory requirements ("LM" is for
+// "Limited Memory") and which can optionally take into account separable bound
+// constraints (the final "B") on the variables.
+//
 //-----------------------------------------------------------------------------
+//
+// This file is part of the VMLMB software which is licensed under the "Expat"
+// MIT license, <https://github.com/emmt/VMLMB>.
+//
+// Copyright (C) 2002-2022, Éric Thiébaut <eric.thiebaut@univ-lyon1.fr>
 
 if (is_void(OPTM_DEBUG)) OPTM_DEBUG = 1n;
 
@@ -22,6 +33,8 @@ func optm_reason(status)
 {
     if (status == OPTM_NOT_POSITIVE_DEFINITE) {
         return "LHS operator is not positive definite";
+    } else if (status == OPTM_TOO_MANY_EVALUATIONS) {
+        return "too many evaluations";
     } else if (status == OPTM_TOO_MANY_ITERATIONS) {
         return "too many iterations";
     } else if (status ==  OPTM_FTEST_SATISFIED) {
@@ -957,7 +970,8 @@ func optm_line_search_limits(&amin, &amax, x0, xmin, xmax, d, dir)
 // OPTIMIZATION METHODS
 func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
                 delta=, epsilon=, lambda=, ftol=, gtol=, xtol=, blmvm=,
-                maxiter=, maxeval=, verb=, output=, cputime=, throwerrors=)
+                maxiter=, maxeval=, verb=, printer=, output=, cputime=,
+                observer=, throwerrors=)
 /* DOCUMENT x = optm_vmlmb(fg, x0, [f, g, status,] lower=, upper=, mem=);
 
      Apply VMLMB algorithm to minimize a multi-variate differentiable objective
@@ -1083,10 +1097,32 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
      - Keyword `verb`, if positive, specifies to print information every `verb`
        iterations.  Nothing is printed if `verb ≤ 0`.  By default, `verb = 0`.
 
-     - If keyword `cputime` is true, print the CPU time instead of the WALL
-       time.
+     - Keyword `printer` is to specify a user-defined subroutine to print
+       information every `verb` iterations.  This subroutine is called as:
+
+           printer, output, iters, evals, rejects, t, x, f, g, gpnorm,
+               alpha, fg;
+
+       with `output` the output stream specified by keyword `output`, `iters`
+       the number of algorithm iterations, `evals` the number of calls to `fg`,
+       `rejects` the number of rejections of the LBFGS direction, `t` the
+       elapsed time in seconds, `x` the current variables, `f` and `g` the
+       value and the gradient of the objective function at `x`, `gpnorm` the
+       Euclidean norm of the projected gradient of the objective function at
+       `x`, `alpha` the last step length, and `fg` the objective function
+       itself.
 
      - Keyword `output` specifies the file stream to print information.
+
+     - Keyword `observer` is to specify a user-defined subroutine to be called
+       at every iteration as follows:
+
+           observer, iters, evals, rejects, t, x, f, g, gpnorm, alpha, fg;
+
+       with the same arguments as for the printer (except `output`).
+
+     - If keyword `cputime` is true, the CPU time instead of the WALL time is
+       used for the printer and the observer.
 
      - Keyword `throwerrors` (true by default), specifies whether to call
        `error` in case of errors instead or returning a `status` indicating the
@@ -1110,6 +1146,7 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
     if (is_void(xtol)) xtol = 1.0E-6;
     if (is_void(lnsrch)) lnsrch = optm_new_line_search();
     if (is_void(verb)) verb = 0;
+    if (is_void(printer)) printer = _optm_vmlmb_printer;
     if (is_void(fmin)) fmin = NAN;
     if (is_void(delta)) delta = NAN;
     if (is_void(epsilon)) epsilon = 0.0;
@@ -1176,6 +1213,7 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
     best_evals = -1; // number of calls to `fg` at `best_x`
     last_evals = -1; // number of calls to `fg` at last iterate
     last_print = -1; // iteration number for last print
+    last_obsrv = -1; // iteration number for last call to observer
     freevars = [];   // subset of free variables (not yet known)
     lbfgs = optm_new_lbfgs(mem);
     if (verb > 0) {
@@ -1184,6 +1222,7 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
         timer, elapsed;
         t0 = elapsed(time_index);
     }
+    call_observer = !is_void(observer);
 
     // Algorithm stage follows that of the line-search, it is one of:
     // 0 = initially;
@@ -1271,7 +1310,8 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
                 s = x - unref(x0);
                 snorm = optm_norm2(s);
                 // Check convergence in variables.
-                if (snorm <= xatol || xrtol > 0 && snorm <= xrtol*optm_norm2(x)) {
+                if (snorm <= xatol
+                    || (xrtol > 0 && snorm <= xrtol*optm_norm2(x))) {
                     status = OPTM_XTEST_SATISFIED;
                     break;
                 }
@@ -1286,9 +1326,17 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
             break;
         }
         if (stage != 1) {
+            // Call user defined observer.
+            timer, elapsed;
+            t = elapsed(time_index) - t0;
+            if (call_observer) {
+                observer, iters, evals, rejects, t, x, f, g, gnorm, alpha, fg;
+                last_obsrv = iters;
+            }
             // Possibly print iteration information.
             if (verb > 0 && (iters % verb) == 0) {
-                _optm_vmlmb_print;
+                printer, output, iters, evals, rejects, t, x, f, g, gpnorm,
+                    alpha, fg;
                 last_print = iters;
             }
             if (stage != 0) {
@@ -1419,20 +1467,24 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
             }
         }
     }
+    timer, elapsed;
+    t = elapsed(time_index) - t0;
+    if (call_observer && iters > last_obsrv) {
+        observer, iters, evals, rejects, t, x, f, g, gnorm, alpha, fg;
+    }
     if (verb > 0) {
         if (iters > last_print) {
-            _optm_vmlmb_print;
-            last_print = iters;
+            printer, output, iters, evals, rejects, t, x, f, g, gpnorm,
+                alpha, fg;
         }
         write, output, format="# Termination: %s\n", optm_reason(status);
     }
     return x;
 }
 
-func _optm_vmlmb_print
+func _optm_vmlmb_printer(output, iters, evals, rejects, t, x, f, g, gpnorm,
+                         alpha, fg)
 {
-    timer, elapsed;
-    t = (elapsed(time_index) - t0)*1E3; // elapsed milliseconds
     if (iters < 1) {
         write, output, format="%s%s\n%s%s\n",
             "# Iter.   Time (ms)    Eval. Reject.",
