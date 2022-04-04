@@ -23,12 +23,12 @@
 %%   default, the un-preconditioned version of the algorithm is run.
 %%
 %% * 'maxiter' is to specify the maximum number of iterations to perform which
-%%   is `intmax()` by default.
+%%   is `2*numel(b)+1` by default.
 %%
 %% * 'restart' is to specify the number of consecutive iterations before
 %%   restarting the conjugate gradient recurrence.  Restarting the algorithm is
 %%   to cope with the accumulation of rounding errors.  By default, `restart =
-%%   min(50,numel(x)+1)`.  Set `restart` to a value less or equal zero or
+%%   min(50,numel(b)+1)`.  Set `restart` to a value less or equal zero or
 %%   greater than `maxiter` if you do not want that any restarts ever occur.
 %%
 %% * 'ftol' is to specify the absolute and relative tolerances for the function
@@ -76,8 +76,8 @@
 %% the different possibilities for the convergence of the algorithm are listed
 %% below.
 %%
-%% * The convergence in the function reduction between succesive iterations occurs
-%%   at iteration `k ≥ 1` if:
+%% * The convergence in the function reduction between succesive iterations
+%%   occurs at iteration `k ≥ 1` if:
 %%
 %%       f_{k-1} - f_{k} ≤ max(fatol, frtol*max_{k' ≤ k}(f_{k'-1} - f_{k'}))
 %%
@@ -114,8 +114,8 @@ function [x, status] = optm_conjgrad(A, b, x, varargin)
     FALSE = false();
 
     %% Default settings (all absolute tolerances set to zero).
-    maxiter = intmax();
-    restart = min(50, numel(b));
+    maxiter = 2*numel(b) + 1;
+    restart = min(50, numel(b) + 1);
     precond = FALSE;
     verb = 0;
     ftol = 1e-8;

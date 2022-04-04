@@ -98,7 +98,7 @@ func optm_conjgrad(A, b, x0, &status, precond=, maxiter=, restart=, verb=,
      - Keyword `restart` is to specify the number of consecutive iterations
        before restarting the conjugate gradient recurrence.  Restarting the
        algorithm is to cope with the accumulation of rounding errors.  By
-       default, `restart = min(50,numberof(x)+1)`.  Set `restart` to a value
+       default, `restart = min(50,numberof(b)+1)`.  Set `restart` to a value
        less or equal zero or greater than `maxiter` if you do not want that any
        restarts ever occur.
 
@@ -182,7 +182,7 @@ func optm_conjgrad(A, b, x0, &status, precond=, maxiter=, restart=, verb=,
     if (is_void(xtol)) xtol = 1.0E-6;
     if (is_void(verb)) verb = 0;
     if (is_void(maxiter)) maxiter = 2*numberof(b) + 1;
-    if (is_void(restart)) restart = min(50, numberof(x) + 1);
+    if (is_void(restart)) restart = min(50, numberof(b) + 1);
     if (is_scalar(ftol)) {
         fatol = 0.0;
         frtol = ftol;
@@ -384,7 +384,7 @@ local optm_iterate_line_search;
      step `alpha` is considered as successful if the following condition (known
      as Armijo's condition) holds:
 
-         f(x0 + alpha*d) <= f(x0) + ftol*df(x0)*alpha
+         f(x0 + alpha*d) ≤ f(x0) + ftol*df(x0)*alpha
 
      where `f(x)` is the objective function at `x`, `x0` denotes the variables
      at the start of the line-search, `df(x0)` is the directional derivative of
@@ -595,8 +595,8 @@ func optm_steepest_descent_step(x, d, fx, fmin, delta, lambda)
             return alpha;
         }
     }
-    // Use typical Hessian eigenvalue if suitable.
     if (lambda == lambda && lambda > 0 && lambda < INF) {
+        // Use typical Hessian eigenvalue if suitable.
         alpha = 1/lambda;
         if (alpha > 0 && alpha < INF) {
             return alpha;
@@ -1515,7 +1515,7 @@ func _optm_inner(x, y)
 
 local optm_norm1;
 func _optm_norm1(x)
-/* DOCUMENT optm_norm2(x);
+/* DOCUMENT optm_norm1(x);
 
      Yields the L1-norm of `x`, that is `sum(abs(x))` but computed as
      efficiently as possible.
