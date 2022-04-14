@@ -84,23 +84,28 @@ def identity(x):
 #------------------------------------------------------------------------------
 # LINEAR CONJUGATE GRADIENT
 
-def conjgrad_printer(itr, t, x, phi, r, z, rho):
+def conjgrad_printer(output, itr, t, x, phi, r, z, rho):
     """Default printer function for `optm.conjgrad`."""
     if z is r:
         # No preconditioner is used.
         if itr == 0:
-            print("# Iter.   Time (ms)     Δf(x)       ‖∇f(x)‖")
-            print("# --------------------------------------------")
-        print(f"{itr:7d} {t*1e3:11.3f} {phi:12.4e} {sqrt(rho):12.4e}")
+            print("# Iter.   Time (ms)     Δf(x)       ‖∇f(x)‖", file=output)
+            print("# --------------------------------------------",
+                  file=output)
+        print(f"{itr:7d} {t*1e3:11.3f} {phi:12.4e} {sqrt(rho):12.4e}",
+              file=output)
     else:
         # A preconditioner is used.
         if itr == 0:
-            print("# Iter.   Time (ms)     Δf(x)       ‖∇f(x)‖     ‖∇f(x)‖_M")
-            print("# ---------------------------------------------------------")
-        print(f"{itr:7d} {t*1e3:11.3f} {phi:12.4e} {norm2(r):12.4e} {sqrt(rho):12.4e}")
+            print("# Iter.   Time (ms)     Δf(x)       ‖∇f(x)‖     ‖∇f(x)‖_M",
+                  file=output)
+            print("# ---------------------------------------------------------",
+                  file=output)
+        print(f"{itr:7d} {t*1e3:11.3f} {phi:12.4e} {norm2(r):12.4e} {sqrt(rho):12.4e}",
+              file=output)
 
 def conjgrad(A, b, x=None, *, precond=identity, maxiter=None, restart=None,
-             verb=0, printer=conjgrad_printer,
+             verb=0, printer=conjgrad_printer, output=sys.stdout,
              ftol=1.0e-8, gtol=1.0e-5, xtol=1.0e-6):
     """
     Usage:
@@ -160,13 +165,17 @@ def conjgrad(A, b, x=None, *, precond=identity, maxiter=None, restart=None,
     - Optional argument `printer` specifies a function to call to print
       information every `verb` iterations.  This function is called as:
 
-          printer(itr, t, x, phi, r, z, rho)
+          printer(output, itr, t, x, phi, r, z, rho)
 
-      with `itr` the iteration number, `t` the elapsed time in seconds, `phi`
-      the reduction of the objective function, `r` the residuals, `z` the
-      preconditioned residuals, and `rho` the squared Euclidean norm of `z`.
-      You can use `z is r` to verify whether a preconditioner is used or not
-      (`z` is different from `r` if this is the case).
+      with `output` the output stream specified by keyword `output`, `itr` the
+      iteration number, `t` the elapsed time in seconds, `phi` the reduction of
+      the objective function, `r` the residuals, `z` the preconditioned
+      residuals, and `rho` the squared Euclidean norm of `z`.  You can use `z
+      is r` to verify whether a preconditioner is used or not (`z` is different
+      from `r` if this is the case).
+
+    - Keyword `output` specifies the file stream to print information,
+      `sys.stdout` by default.
 
     - Keywords `ftol`, `gtol` and `xtol` specify tolerances for deciding the
       convergence of the algorithm.  In what follows, `x_{k}`,
@@ -235,6 +244,7 @@ def conjgrad(A, b, x=None, *, precond=identity, maxiter=None, restart=None,
     the meaning of the returned status.
 
     See also: optm.reason, optm.inner.
+
     """
 
     # Get options.
@@ -299,7 +309,7 @@ def conjgrad(A, b, x=None, *, precond=identity, maxiter=None, restart=None,
             gtest = max(0.0, gatol, 2.0*grtol*sqrt(rho))
 
         if verb > 0 and (k % verb) == 0:
-            printer(k, elapsed_time(t0), x, phi, r, z, rho)
+            printer(output, k, elapsed_time(t0), x, phi, r, z, rho)
 
         if 2.0*sqrt(rho) <= gtest:
             # Normal convergence in the gradient norm.
@@ -351,9 +361,9 @@ def conjgrad(A, b, x=None, *, precond=identity, maxiter=None, restart=None,
     if verb > 0:
         # Print last iteration, if not yet done, and termination message.
         if (k % verb) != 0:
-            printer(k, elapsed_time(t0), x, phi, r, z, rho)
+            printer(output, k, elapsed_time(t0), x, phi, r, z, rho)
         if mesg and printer is conjgrad_printer:
-            print(f"# {mesg}")
+            print(f"# {mesg}", file=output)
     return (x, status)
 
 #------------------------------------------------------------------------------
@@ -1052,7 +1062,7 @@ def vmlmb(fg, x0, *, lower=None, upper=None, mem=5, blmvm=False,
       norm of the projected gradient of the objective function at `x`, `alpha`
       the last step length, and `fg` the objective function itself.
 
-    - Keyword `output` specifies the file stream to print information, it is
+    - Keyword `output` specifies the file stream to print information,
       `sys.stdout` by default.
 
     - Keyword `observer` is to specify a user-defined subroutine to be called

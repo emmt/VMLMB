@@ -52,7 +52,7 @@ func optm_reason(status)
 // LINEAR CONJUGATE GRADIENT
 
 func optm_conjgrad(A, b, x0, &status, precond=, maxiter=, restart=, verb=,
-                   output=, ftol=, gtol=, xtol=)
+                   printer=, output=, ftol=, gtol=, xtol=)
 /* DOCUMENT x = optm_conjgrad(A, b, [x0, status]);
 
      Run the (preconditioned) linear conjugate gradient algorithm to solve
@@ -104,6 +104,20 @@ func optm_conjgrad(A, b, x0, &status, precond=, maxiter=, restart=, verb=,
 
      - Keyword `verb`, if positive, specifies to print information every `verb`
        iterations.  Nothing is printed if `verb ≤ 0`.  By default, `verb = 0`.
+
+     - Optional argument `printer` specifies a function to call to print
+       information every `verb` iterations.  This function is called as:
+
+           printer(output, itr, t, x, phi, r, z, rho)
+
+       with `output` the output stream specified by keyword `output`, `itr` the
+       iteration number, `t` the elapsed time in seconds, `phi` the reduction
+       of the objective function, `r` the residuals, `z` the preconditioned
+       residuals, and `rho` the squared Euclidean norm of `z`.  You can use `z
+       is r` to verify whether a preconditioner is used or not (`z` is
+       different from `r` if this is the case).
+
+     - Keyword `output` specifies the file stream to print information.
 
      - Keywords `ftol`, `gtol` and `xtol` specify tolerances for deciding the
        convergence of the algorithm.  In what follows, `x_{k}`,
@@ -181,6 +195,7 @@ func optm_conjgrad(A, b, x0, &status, precond=, maxiter=, restart=, verb=,
     if (is_void(gtol)) gtol = 1.0E-5;
     if (is_void(xtol)) xtol = 1.0E-6;
     if (is_void(verb)) verb = 0;
+    if (is_void(printer)) printer = optm_conjgrad_printer;
     if (is_void(maxiter)) maxiter = 2*numberof(b) + 1;
     if (is_void(restart)) restart = min(50, numberof(b) + 1);
     if (is_scalar(ftol)) {
@@ -266,7 +281,8 @@ func optm_conjgrad(A, b, x0, &status, precond=, maxiter=, restart=, verb=,
             gtest = max(0.0, gatol, 2.0*grtol*sqrt(rho));
         }
         if (verb > 0 && (k % verb) == 0) {
-            _optm_conjgrad_printer;
+            timer, elapsed;
+            printer, output, k, elapsed(3) - t0, x, phi, r, z, rho;
         }
         if (2.0*sqrt(rho) <= gtest) {
             // Normal convergence in the gradient norm.
@@ -321,36 +337,39 @@ func optm_conjgrad(A, b, x0, &status, precond=, maxiter=, restart=, verb=,
     if (verb > 0) {
         // Print last iteration if not yet done and termination message.
         if ((k % verb) != 0) {
-            _optm_conjgrad_printer;
+            timer, elapsed;
+            printer, output, k, elapsed(3) - t0, x, phi, r, z, rho;
         }
-        if (mesg) {
+        if (mesg && printer == optm_conjgrad_printer) {
             write, output, format="# %s\n", mesg;
         }
     }
     return x;
 }
 
-// Helper function, all parameters passed as external.
-func _optm_conjgrad_printer
+func optm_conjgrad_printer(output, itr, t, x, phi, r, z, rho)
+/* DOCUMENT optm_conjgrad_printer, output, itr, t, x, phi, r, z, rho;
+     Default printer function for `optm_conjgrad`.
+
+   SEE ALSO:optm_conjgrad.
+ */
 {
-    timer, elapsed;
-    t = (elapsed(3) - t0)*1E3; // elapsed time in ms
     if (preconditioned) {
-        if (k == 0) {
+        if (itr == 0) {
             write, output, format="%s\n%s\n",
                 "# Iter.   Time (ms)     Δf(x)       ‖∇f(x)‖     ‖∇f(x)‖_M",
                 "# ---------------------------------------------------------";
         }
         write, output, format="%7d %11.3f %12.4e %12.4e %12.4e\n",
-            k, t, phi, optm_norm2(r), sqrt(rho);
+            itr, t*1e3, phi, optm_norm2(r), sqrt(rho);
     } else {
-        if (k == 0) {
+        if (itr == 0) {
             write, output, format="%s\n%s\n",
                 "# Iter.   Time (ms)     Δf(x)       ‖∇f(x)‖",
                 "# --------------------------------------------";
         }
         write, output, format="%7d %11.3f %12.4e %12.4e\n",
-            k, t, phi, sqrt(rho);
+            itr, t*1e3, phi, sqrt(rho);
     }
 }
 
