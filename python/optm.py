@@ -99,7 +99,7 @@ def conjgrad_printer(itr, t, x, phi, r, z, rho):
             print("# ---------------------------------------------------------")
         print(f"{itr:7d} {t*1e3:11.3f} {phi:12.4e} {norm2(r):12.4e} {sqrt(rho):12.4e}")
 
-def conjgrad(A, b, x=None, precond=identity, maxiter=None, restart=None,
+def conjgrad(A, b, x=None, *, precond=identity, maxiter=None, restart=None,
              verb=0, printer=conjgrad_printer,
              ftol=1.0e-8, gtol=1.0e-5, xtol=1.0e-6):
     """
@@ -254,15 +254,15 @@ def conjgrad(A, b, x=None, precond=identity, maxiter=None, restart=None,
         x_is_zero = (norm2(x) == 0.0)
 
     # Define local variables.
-    mesg = None
-    #r = [];       # residuals `r = b - A⋅x`
-    #z = [];       # preconditioned residuals `z = M⋅r`
-    #p = [];       # search direction `p = z + β⋅p`
-    #q = [];       # `q = A⋅p`
-    #rho = [];     # `rho = ⟨r,z⟩`
-    #oldrho = [];  # previous value of `rho`
-    phi = 0.0      # function reduction
-    phimax = 0.0   # maximum function reduction
+    mesg = None   # exit message
+    #r = ...      # residuals `r = b - A⋅x`
+    #z = ...      # preconditioned residuals `z = M⋅r`
+    #p = ...      # search direction `p = z + β⋅p`
+    #q = ...      # `q = A⋅p`
+    #oldrho = ... # previous value of `rho`
+    rho = 0.0     # `rho = ⟨r,z⟩`
+    phi = 0.0     # function reduction
+    phimax = 0.0  # maximum function reduction
     xtest = (xatol > 0.0 or xrtol > 0.0)
     if verb > 0:
         t0 = elapsed_time(0.0)
@@ -299,7 +299,7 @@ def conjgrad(A, b, x=None, precond=identity, maxiter=None, restart=None,
             gtest = max(0.0, gatol, 2.0*grtol*sqrt(rho))
 
         if verb > 0 and (k % verb) == 0:
-            printer(itr, elapsed_time(t0), x, phi, r, z, rho)
+            printer(k, elapsed_time(t0), x, phi, r, z, rho)
 
         if 2.0*sqrt(rho) <= gtest:
             # Normal convergence in the gradient norm.
@@ -1369,7 +1369,7 @@ def inner(x, y):
 
     See also: `optm.norm2`.
     """
-    return _np.vot(x, y)
+    return _np.vdot(x, y)
 
 def norm1(x):
     """Compute the L1-norm of `x`, that is `sum(abs(x))` but computed as
