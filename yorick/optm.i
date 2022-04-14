@@ -1101,14 +1101,14 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
      - Keyword `printer` is to specify a user-defined subroutine to print
        information every `verb` iterations.  This subroutine is called as:
 
-           printer, output, iters, evals, rejects, t, x, f, g, gpnorm,
+           printer, output, iters, evals, rejects, t, x, f, g, pgnorm,
                alpha, fg;
 
        with `output` the output stream specified by keyword `output`, `iters`
        the number of algorithm iterations, `evals` the number of calls to `fg`,
        `rejects` the number of rejections of the LBFGS direction, `t` the
        elapsed time in seconds, `x` the current variables, `f` and `g` the
-       value and the gradient of the objective function at `x`, `gpnorm` the
+       value and the gradient of the objective function at `x`, `pgnorm` the
        Euclidean norm of the projected gradient of the objective function at
        `x`, `alpha` the last step length, and `fg` the objective function
        itself.
@@ -1118,7 +1118,7 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
      - Keyword `observer` is to specify a user-defined subroutine to be called
        at every iteration as follows:
 
-           observer, iters, evals, rejects, t, x, f, g, gpnorm, alpha, fg;
+           observer, iters, evals, rejects, t, x, f, g, pgnorm, alpha, fg;
 
        with the same arguments as for the printer (except `output`).
 
@@ -1197,7 +1197,7 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
     s = [];          // effective step
     pg = [];         // projected gradient
     pg0 = [];        // projected gradient at start of line search
-    gnorm = 0.0;     // Euclidean norm of the (pojected) gradient
+    pgnorm = 0.0;    // Euclidean norm of the (projected) gradient
     alpha = 0.0;     // step length
     amin = -INF;     // first step length threshold
     amax = +INF;     // last step length threshold
@@ -1209,7 +1209,7 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
     best_f = +INF;   // function value at `best_x`
     best_g = [];     // gradient at `best_x`
     best_x = [];     // best solution found so far
-    best_gnorm = -1; // norm of projected gradient at `best_x` (< 0 if unknown)
+    best_pgnorm = -1;// norm of projected gradient at `best_x` (< 0 if unknown)
     best_alpha =  0; // step length at `best_x` (< 0 if unknown)
     best_evals = -1; // number of calls to `fg` at `best_x`
     last_evals = -1; // number of calls to `fg` at last iterate
@@ -1252,7 +1252,7 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
             best_f = f;
             eq_nocopy, best_g, g;
             eq_nocopy, best_x, x;
-            best_gnorm = -1; // must be recomputed
+            best_pgnorm = -1; // must be recomputed
             best_alpha = alpha;
             best_evals = evals;
         }
@@ -1277,26 +1277,26 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
                 // of the projected gradient (needed to check for convergence).
                 freevars = optm_unblocked_variables(x, lower, upper, g);
                 pg = freevars*g;
-                gnorm = optm_norm2(pg);
+                pgnorm = optm_norm2(pg);
                 if (!blmvm) {
                     // Projected gradient no longer needed, free some memory.
                     pg = [];
                 }
             } else {
                 // Just compute the norm of the gradient.
-                gnorm = optm_norm2(g);
+                pgnorm = optm_norm2(g);
             }
             if (evals == best_evals) {
                 // Now we know the norm of the (projected) gradient at the best
                 // solution so far.
-                best_gnorm = gnorm;
+                best_pgnorm = pgnorm;
             }
             // Check for algorithm convergence or termination.
             if (evals == 1) {
                 // Compute value for testing the convergence in the gradient.
-                gtest = max(gatol, grtol*gnorm);
+                gtest = max(gatol, grtol*pgnorm);
             }
-            if (gnorm <= gtest) {
+            if (pgnorm <= gtest) {
                 // Convergence in gradient.
                 status = OPTM_GTEST_SATISFIED;
                 break;
@@ -1331,12 +1331,12 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
             timer, elapsed;
             t = elapsed(time_index) - t0;
             if (call_observer) {
-                observer, iters, evals, rejects, t, x, f, g, gnorm, alpha, fg;
+                observer, iters, evals, rejects, t, x, f, g, pgnorm, alpha, fg;
                 last_obsrv = iters;
             }
             // Possibly print iteration information.
             if (verb > 0 && (iters % verb) == 0) {
-                printer, output, iters, evals, rejects, t, x, f, g, gpnorm,
+                printer, output, iters, evals, rejects, t, x, f, g, pgnorm,
                     alpha, fg;
                 last_print = iters;
             }
@@ -1384,7 +1384,7 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
                 } else if (epsilon > 0) {
                     // A more restrictive criterion has been specified for
                     // accepting a descent direction.
-                    if (dg > -epsilon*optm_norm2(d)*gnorm) {
+                    if (dg > -epsilon*optm_norm2(d)*pgnorm) {
                         dir = 0; // discard search direction
                     }
                 }
@@ -1395,7 +1395,7 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
                 // to be a sufficient descent direction.  Take the steepest
                 // feasible descent direction.
                 d = -(bounded ? g*freevars : g);
-                dg = -gnorm^2;
+                dg = -pgnorm^2;
                 dir = 1; // scaling needed
             }
             if (dir != 2 && iters > 0) {
@@ -1407,10 +1407,10 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
                 alpha = 1.0;
             } else {
                 // Find a suitable step size along the steepest feasible
-                // descent direction `d`.  Note that `gnorm`, the Euclidean
+                // descent direction `d`.  Note that `pgnorm`, the Euclidean
                 // norm of the (projected) gradient, is also that of `d` in
                 // that case.
-                alpha = optm_steepest_descent_step(x, gnorm, f, fmin,
+                alpha = optm_steepest_descent_step(x, pgnorm, f, fmin,
                                                    delta, lambda);
             }
             if (bounded) {
@@ -1450,15 +1450,15 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
         if (verb > 0) {
             // Restore other information for printing.
             alpha = best_alpha;
-            if (best_gnorm >= 0) {
-                gnorm = best_gnorm;
+            if (best_pgnorm >= 0) {
+                pgnorm = best_pgnorm;
             } else {
                 // Re-compute the norm of the (projected) gradient.
                 if (bounded) {
                     freevars = optm_unblocked_variables(x, lower, upper, g);
-                    gnorm = optm_norm2(g*freevars);
+                    pgnorm = optm_norm2(g*freevars);
                 } else {
-                    gnorm = optm_norm2(g);
+                    pgnorm = optm_norm2(g);
                 }
             }
             if (f < f0) {
@@ -1471,11 +1471,11 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
     timer, elapsed;
     t = elapsed(time_index) - t0;
     if (call_observer && iters > last_obsrv) {
-        observer, iters, evals, rejects, t, x, f, g, gnorm, alpha, fg;
+        observer, iters, evals, rejects, t, x, f, g, pgnorm, alpha, fg;
     }
     if (verb > 0) {
         if (iters > last_print) {
-            printer, output, iters, evals, rejects, t, x, f, g, gpnorm,
+            printer, output, iters, evals, rejects, t, x, f, g, pgnorm,
                 alpha, fg;
         }
         write, output, format="# Termination: %s\n", optm_reason(status);
@@ -1483,7 +1483,7 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
     return x;
 }
 
-func _optm_vmlmb_printer(output, iters, evals, rejects, t, x, f, g, gpnorm,
+func _optm_vmlmb_printer(output, iters, evals, rejects, t, x, f, g, pgnorm,
                          alpha, fg)
 {
     if (iters < 1) {
@@ -1494,7 +1494,7 @@ func _optm_vmlmb_printer(output, iters, evals, rejects, t, x, f, g, gpnorm,
             "-----------------------------------------------";
     }
     write, output, format="%7d %11.3f %7d %7d %23.15e %11.3e %11.3e\n",
-        iters, t*1e3, evals, rejects, f, gnorm, alpha;
+        iters, t*1e3, evals, rejects, f, pgnorm, alpha;
 }
 
 //-----------------------------------------------------------------------------

@@ -234,7 +234,7 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
     s = [];          % effective step
     pg = [];         % projected gradient
     pg0 = [];        % projected gradient at start of line search
-    gnorm = 0.0;     % Euclidean norm of the (pojected) gradient
+    pgnorm = 0.0;    % Euclidean norm of the (projected) gradient
     alpha = 0.0;     % step length
     amin = -INF;     % first step length threshold
     amax = +INF;     % last step length threshold
@@ -246,7 +246,7 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
     best_f = +INF;   % function value at `best_x`
     best_g = [];     % gradient at `best_x`
     best_x = [];     % best solution found so far
-    best_gnorm = -1; % norm of projected gradient at `best_x` (< 0 if unknown)
+    best_pgnorm = -1;% norm of projected gradient at `best_x` (< 0 if unknown)
     best_alpha =  0; % step length at `best_x` (< 0 if unknown)
     best_evals = -1; % number of calls to `fg` at `best_x`
     last_evals = -1; % number of calls to `fg` at last iterate
@@ -290,7 +290,7 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
             best_f = f;
             best_g = g;
             best_x = x;
-            best_gnorm = -1; % must be recomputed
+            best_pgnorm = -1; % must be recomputed
             best_alpha = alpha;
             best_evals = evals;
         end
@@ -316,26 +316,26 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
                 %% of the projected gradient (needed to check for convergence).
                 freevars = optm_unblocked_variables(x, lower, upper, g);
                 pg = freevars .* g;
-                gnorm = optm_norm2(pg);
+                pgnorm = optm_norm2(pg);
                 if ~blmvm
                     %% Projected gradient no longer needed, free some memory.
                     pg = [];
                 end
             else
                 %% Just compute the norm of the gradient.
-                gnorm = optm_norm2(g);
+                pgnorm = optm_norm2(g);
             end
             if evals == best_evals
                 %% Now we know the norm of the (projected) gradient at the best
                 %% solution so far.
-                best_gnorm = gnorm;
+                best_pgnorm = pgnorm;
             end
             %% Check for algorithm convergence or termination.
             if evals == 1
                 %% Compute value for testing the convergence in the gradient.
-                gtest = max(gatol, grtol*gnorm);
+                gtest = max(gatol, grtol*pgnorm);
             end
-            if gnorm <= gtest
+            if pgnorm <= gtest
                 %% Convergence in gradient.
                 status = optm_status('GTEST_SATISFIED');
                 break
@@ -368,7 +368,7 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
             %% Possibly print iteration information.
             if verb > 0 && mod(iters, verb) == 0
                 print_iteration(iters, time() - t0, evals, rejects, ...
-                                f, gnorm, alpha);
+                                f, pgnorm, alpha);
                 last_print = iters;
             end
             if stage ~= 0
@@ -415,7 +415,7 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
                 elseif epsilon > 0
                     %% A more restrictive criterion has been specified for
                     %% accepting a descent direction.
-                    if dg > -epsilon*optm_norm2(d)*gnorm
+                    if dg > -epsilon*optm_norm2(d)*pgnorm
                         dir = 0; % discard search direction
                     end
                 end
@@ -430,7 +430,7 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
                 else
                     d = -g;
                 end
-                dg = -gnorm^2;
+                dg = -pgnorm^2;
                 dir = 1; % scaling needed
             end
             if dir ~= 2 && iters > 0
@@ -442,10 +442,10 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
                 alpha = 1.0;
             else
                 %% Find a suitable step size along the steepest feasible
-                %% descent direction `d`.  Note that `gnorm`, the Euclidean
+                %% descent direction `d`.  Note that `pgnorm`, the Euclidean
                 %% norm of the (projected) gradient, is also that of `d` in
                 %% that case.
-                alpha = optm_steepest_descent_step(x, gnorm, f, fmin, ...
+                alpha = optm_steepest_descent_step(x, pgnorm, f, fmin, ...
                                                    delta, lambda);
             end
             if bounded
@@ -487,15 +487,15 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
         if verb > 0
             %% Restore other information for printing.
             alpha = best_alpha;
-            if best_gnorm >= 0
-                gnorm = best_gnorm;
+            if best_pgnorm >= 0
+                pgnorm = best_pgnorm;
             else
                 %% Re-compute the norm of the (projected) gradient.
                 if bounded
                     freevars = optm_unblocked_variables(x, lower, upper, g);
-                    gnorm = optm_norm2(g .* freevars);
+                    pgnorm = optm_norm2(g .* freevars);
                 else
-                    gnorm = optm_norm2(g);
+                    pgnorm = optm_norm2(g);
                 end
             end
             if f < f0
@@ -508,14 +508,14 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
     if verb > 0
         if iters > last_print
             print_iteration(iters, time() - t0, evals, rejects, ...
-                            f, gnorm, alpha);
+                            f, pgnorm, alpha);
             last_print = iters;
         end
         fprintf('# Termination: %s\n', optm_reason(status));
     end
 end
 
-function print_iteration(iters, t, evals, rejects, f, gnorm, alpha)
+function print_iteration(iters, t, evals, rejects, f, pgnorm, alpha)
     if iters < 1
         fprintf('%s%s\n%s%s\n', ...
                 '# Iter.   Time (ms)    Eval. Reject.', ...
@@ -524,5 +524,5 @@ function print_iteration(iters, t, evals, rejects, f, gnorm, alpha)
                 '-----------------------------------------------');
     end
     fprintf('%7d %11.3f %7d %7d %23.15e %11.3e %11.3e\n', ...
-            iters, t, evals, rejects, f, gnorm, alpha);
+            iters, t, evals, rejects, f, pgnorm, alpha);
 end
