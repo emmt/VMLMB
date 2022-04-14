@@ -905,12 +905,12 @@ def line_search_limits(x0, xmin, xmax, pm, d):
 # VMLMB ALGORITHM
 
 def vmlmb_printer(output, iters, evals, rejects,
-                  t, x, fx, gx, gpnorm, alpha, fg):
+                  t, x, fx, gx, pgnorm, alpha, fg):
     """Default printer for `optm.vmlmb`."""
     if iters < 1:
         print("# Iter.   Time (ms)    Eval. Reject.       Obj. Func.           Grad.       Step", file=output)
         print("# ---------------------------------------------------------------------------------", file=output)
-    print(f"{iters:7d} {t*1e3:11.3f} {evals:7d} {rejects:7d} {fx:23.15e} {gpnorm:11.3e} {alpha:11.3e}", file=output)
+    print(f"{iters:7d} {t*1e3:11.3f} {evals:7d} {rejects:7d} {fx:23.15e} {pgnorm:11.3e} {alpha:11.3e}", file=output)
 
 def vmlmb(fg, x0, *, lower=None, upper=None, mem=5, blmvm=False,
           lnsrch=LineSearch(), fmin=None, xtiny=None, f2nd=None,
@@ -1041,14 +1041,14 @@ def vmlmb(fg, x0, *, lower=None, upper=None, mem=5, blmvm=False,
     - Keyword `printer` is to specify a user-defined subroutine to print
       information every `verb` iterations.  This subroutine is called as:
 
-          printer(output, iters, evals, rejects, t, x, f, g, gpnorm,
+          printer(output, iters, evals, rejects, t, x, f, g, pgnorm,
                   alpha, fg)
 
       with `output` the output stream specified by keyword `output`, `iters`
       the number of algorithm iterations, `evals` the number of calls to `fg`,
       `rejects` the number of rejections of the LBFGS direction, `t` the
       elapsed time in seconds, `x` the current variables, `f` and `g` the value
-      and the gradient of the objective function at `x`, `gpnorm` the Euclidean
+      and the gradient of the objective function at `x`, `pgnorm` the Euclidean
       norm of the projected gradient of the objective function at `x`, `alpha`
       the last step length, and `fg` the objective function itself.
 
@@ -1058,7 +1058,7 @@ def vmlmb(fg, x0, *, lower=None, upper=None, mem=5, blmvm=False,
     - Keyword `observer` is to specify a user-defined subroutine to be called
       at every iteration as follows:
 
-          observer(iters, evals, rejects, t, x, f, g, gpnorm, alpha, fg)
+          observer(iters, evals, rejects, t, x, f, g, pgnorm, alpha, fg)
 
       with the same arguments as for the printer (except `output`).
 
@@ -1071,13 +1071,12 @@ def vmlmb(fg, x0, *, lower=None, upper=None, mem=5, blmvm=False,
     """
     # Constants.
     Inf = _np.inf
-    NaN = _np.nan
 
     # Tolerances.  Most of these are forced to be nonnegative to simplify
     # tests.
     (fatol, frtol) = get_tolerances(ftol, -Inf)
     (gatol, grtol) = get_tolerances(gtol, 0.0)
-    (gxtol, gxtol) = get_tolerances(xtol, 0.0)
+    (xatol, xrtol) = get_tolerances(xtol, 0.0)
 
     # Bound constraints.  For faster code, unlimited bounds are preferentially
     # represented by `None`.
@@ -1085,39 +1084,39 @@ def vmlmb(fg, x0, *, lower=None, upper=None, mem=5, blmvm=False,
         lower = None
     if not upper is None and _np.all(upper == +Inf):
         upper = None
-    bounded = not lower is None or not bounded is None
+    bounded = not lower is None or not upper is None
     if not bounded:
         # No needs to use BLMVM trick in the unconstrained case.
         blmvm = False
 
     # Other initialization.
-    x = unref(x0);   # initial iterate (avoiding copy)
-    g = [];          # gradient
-    f0 = +Inf;       # function value at start of line-search
-    g0 = [];         # gradient at start of line-search
-    d = [];          # search direction
-    s = [];          # effective step
-    pg = [];         # projected gradient
-    pg0 = [];        # projected gradient at start of line search
-    gnorm = 0.0;     # Euclidean norm of the (pojected) gradient
-    alpha = 0.0;     # step length
-    amin = -Inf;     # first step length threshold
-    amax = +Inf;     # last step length threshold
-    evals = 0;       # number of calls to `fg`
-    iters = 0;       # number of iterations
-    projs = 0;       # number of projections onto the feasible set
-    rejects = 0;     # number of search direction rejections
-    status = 0;      # non-zero when algorithm is about to terminate
-    best_f = +Inf;   # function value at `best_x`
-    best_g = [];     # gradient at `best_x`
-    best_x = [];     # best solution found so far
-    best_gnorm = -1; # norm of projected gradient at `best_x` (< 0 if unknown)
-    best_alpha =  0; # step length at `best_x` (< 0 if unknown)
-    best_evals = -1; # number of calls to `fg` at `best_x`
-    last_evals = -1; # number of calls to `fg` at last iterate
-    last_print = -1; # iteration number for last print
-    last_obsrv = -1; # iteration number for last call to observer
-    freevars = [];   # subset of free variables (not yet known)
+    x = x0           # initial iterate (avoiding copy)
+    g = None         # gradient
+    f0 = +Inf        # function value at start of line-search
+    g0 = None        # gradient at start of line-search
+    d = None         # search direction
+    s = None         # effective step
+    pg = None        # projected gradient
+    pg0 = None       # projected gradient at start of line search
+    pgnorm = 0.0     # Euclidean norm of the (projected) gradient
+    alpha = 0.0      # step length
+    amin = -Inf      # first step length threshold
+    amax = +Inf      # last step length threshold
+    evals = 0        # number of calls to `fg`
+    iters = 0        # number of iterations
+    projs = 0        # number of projections onto the feasible set
+    rejects = 0      # number of search direction rejections
+    status = 0       # non-zero when algorithm is about to terminate
+    best_f = +Inf    # function value at `best_x`
+    best_g = None    # gradient at `best_x`
+    best_x = None    # best solution found so far
+    best_pgnorm = -1 # norm of projected gradient at `best_x` (< 0 if unknown)
+    best_alpha =  0  # step length at `best_x` (< 0 if unknown)
+    best_evals = -1  # number of calls to `fg` at `best_x`
+    last_evals = -1  # number of calls to `fg` at last iterate
+    last_print = -1  # iteration number for last print
+    last_obsrv = -1  # iteration number for last call to observer
+    freevars = None  # subset of free variables (not yet known)
     lbfgs = LBFGS(mem)
     if verb > 0:
         t0 = elapsed_time(0.0)
@@ -1143,14 +1142,14 @@ def vmlmb(fg, x0, *, lower=None, upper=None, mem=5, blmvm=False,
             projs += 1
 
         # Compute the objective function and its gradient.
-        f, g = fg(x, g)
+        f, g = fg(x)
         evals += 1
         if f < best_f or evals == 1:
             # Save best solution so far.
             best_f = f
             best_g = g # FIXME: this is not a copy
             best_x = x # FIXME: this is not a copy
-            best_gnorm = -1 # must be recomputed
+            best_pgnorm = -1 # must be recomputed
             best_alpha = alpha
             best_evals = evals
 
@@ -1161,9 +1160,11 @@ def vmlmb(fg, x0, *, lower=None, upper=None, mem=5, blmvm=False,
                 # Line-search has converged, `x` is the next iterate.
                 iters += 1
                 last_evals = evals
+                stage = 2
             else:
                 # Line-search has not converged, peek next trial step.
                 alpha = lnsrch.step()
+                stage = 1
 
         if stage != 1:
             # Initial or next iterate after convergence of line-search.
@@ -1172,26 +1173,26 @@ def vmlmb(fg, x0, *, lower=None, upper=None, mem=5, blmvm=False,
                 # of the projected gradient (needed to check for convergence).
                 freevars = unblocked_variables(x, lower, upper, g)
                 pg = freevars*g # FIXME: freevars.astype(T)
-                gnorm = norm2(pg)
+                pgnorm = norm2(pg)
                 if not blmvm:
                     # Projected gradient no longer needed, free some memory.
                     pg = None
 
             else:
                 # Just compute the norm of the gradient.
-                gnorm = norm2(g)
+                pgnorm = norm2(g)
 
             if evals == best_evals:
                 # Now we know the norm of the (projected) gradient at the best
                 # solution so far.
-                best_gnorm = gnorm
+                best_pgnorm = pgnorm
 
             # Check for algorithm convergence or termination.
             if evals == 1:
                 # Compute value for testing the convergence in the gradient.
-                gtest = max(gatol, grtol*gnorm)
+                gtest = max(gatol, grtol*pgnorm)
 
-            if gnorm <= gtest:
+            if pgnorm <= gtest:
                 # Convergence in gradient.
                 status = GTEST_SATISFIED
                 break
@@ -1221,12 +1222,12 @@ def vmlmb(fg, x0, *, lower=None, upper=None, mem=5, blmvm=False,
             # Call user defined observer.
             t = elapsed_time(t0)
             if call_observer:
-                observer(iters, evals, rejects, t, x, f, g, gnorm, alpha, fg)
+                observer(iters, evals, rejects, t, x, f, g, pgnorm, alpha, fg)
                 last_obsrv = iters
 
             # Possibly print iteration information.
             if verb > 0 and (iters % verb) == 0:
-                printer(output, iters, evals, rejects, t, x, f, g, gpnorm,
+                printer(output, iters, evals, rejects, t, x, f, g, pgnorm,
                         alpha, fg)
                 last_print = iters
 
@@ -1269,7 +1270,7 @@ def vmlmb(fg, x0, *, lower=None, upper=None, mem=5, blmvm=False,
                 elif epsilon > 0:
                     # A more restrictive criterion has been specified for
                     # accepting a descent direction.
-                    if dg > -epsilon*norm2(d)*gnorm:
+                    if dg > -epsilon*norm2(d)*pgnorm:
                         flg = 0 # discard search direction
 
             if flg == 0:
@@ -1281,7 +1282,7 @@ def vmlmb(fg, x0, *, lower=None, upper=None, mem=5, blmvm=False,
                     d = -g*freevars
                 else:
                     d = -g
-                dg = -gnorm**2
+                dg = -pgnorm**2
                 flg = 1 # scaling needed
 
             # Determine the length `alpha` of the initial step along `d`.
@@ -1293,10 +1294,10 @@ def vmlmb(fg, x0, *, lower=None, upper=None, mem=5, blmvm=False,
                 if iters > 0:
                     ++rejects
                 # Find a suitable step size along the steepest feasible
-                # descent direction `d`.  Note that `gnorm`, the Euclidean
+                # descent direction `d`.  Note that `pgnorm`, the Euclidean
                 # norm of the (projected) gradient, is also that of `d` in
                 # that case.
-                alpha = steepest_descent_step(x, gnorm, f, fmin=fmin,
+                alpha = steepest_descent_step(x, pgnorm, f, fmin=fmin,
                                               xtiny=xtiny, f2nd=f2nd)
 
             if bounded:
@@ -1307,6 +1308,7 @@ def vmlmb(fg, x0, *, lower=None, upper=None, mem=5, blmvm=False,
 
             # Initialize line-search.
             lnsrch.start(f, dg, alpha)
+            stage = 1
 
             # Save iterate at start of line-search.
             f0 = f
@@ -1331,15 +1333,15 @@ def vmlmb(fg, x0, *, lower=None, upper=None, mem=5, blmvm=False,
         if verb > 0:
             # Restore other information for printing.
             alpha = best_alpha
-            if best_gnorm >= 0:
-                gnorm = best_gnorm
+            if best_pgnorm >= 0:
+                pgnorm = best_pgnorm
             else:
                 # Re-compute the norm of the (projected) gradient.
                 if bounded:
                     freevars = unblocked_variables(x, lower, upper, g)
-                    gnorm = norm2(g*freevars)
+                    pgnorm = norm2(g*freevars)
                 else:
-                    gnorm = norm2(g)
+                    pgnorm = norm2(g)
 
             if f < f0:
                 # Some progresses since last iterate, pretend that one more
@@ -1348,15 +1350,15 @@ def vmlmb(fg, x0, *, lower=None, upper=None, mem=5, blmvm=False,
 
     t = elapsed_time(t0)
     if call_observer and iters > last_obsrv:
-        observer(iters, evals, rejects, t, x, f, g, gnorm, alpha, fg)
+        observer(iters, evals, rejects, t, x, f, g, pgnorm, alpha, fg)
     if verb > 0:
         if iters > last_print:
-            printer(output, iters, evals, rejects, t, x, f, g, gpnorm,
+            printer(output, iters, evals, rejects, t, x, f, g, pgnorm,
                     alpha, fg)
         if printer is vmlmb_printer:
-            print("# Termination: {reason(status)}", file=output)
+            print(f"# Termination: {reason(status)}", file=output)
 
-    return (x, fx, gx, status)
+    return (x, f, g, status)
 
 #------------------------------------------------------------------------------
 # VECTORIZED OPERATIONS
@@ -1439,6 +1441,15 @@ def update(y, alpha, x):
         return y - x
     else:
         return _np.add(y, scale(x, alpha))
+
+def abs2(x):
+    """Returns the squared absolute value of its argument."""
+    if _np.iscomplexobj(x):
+        x_re = x.real
+        x_im = x.imag
+        return x_re*x_re + x_im*x_im
+    else:
+        return x*x
 
 #------------------------------------------------------------------------------
 # UTILITIES
