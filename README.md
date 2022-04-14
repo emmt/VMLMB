@@ -14,8 +14,8 @@ restoration in *inverse problems* framework.
 
 The objective of this repository is to provide algorithms that:
 * run out of the box (no additional libraries needed);
-* are efficient (although maybe not as fast as if implemented in low level
-  compiled languages) and usable for serious applications;
+* are efficient (although maybe not as fast as if implemented in a low level
+  compiled language) and usable for serious applications;
 * are well documented;
 * have readable code;
 * can be easily modified.
@@ -30,6 +30,11 @@ The repository is organized as follows:
   Octave](https://www.gnu.org/software/octave) version of `VMLMB` and of a
   preconditioned linear conjugate gradient method.  See file
   [`matlab/README.md`](./matlab/README.md) for installation and usage
+  instructions.
+
+- Directory [`python`](./python) contains a pure [`NumPy`](https://numpy.org/)
+  version of `VMLMB` and of a preconditioned linear conjugate gradient method.
+  See file [`python/README.md`](./python/README.md) for installation and usage
   instructions.
 
 - Directory [`yorick`](./yorick) contains a pure
