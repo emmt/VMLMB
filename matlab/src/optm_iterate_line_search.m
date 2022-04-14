@@ -43,12 +43,12 @@
 %%             lnsrch = optm_iterate_line_search(lnsrch, fx);
 %%         end
 %%     end
-function lnsrch = optm_iterate_line_search(lnsrch, f)
+function lnsrch = optm_iterate_line_search(lnsrch, fx)
     finit = lnsrch.finit;
     ginit = lnsrch.ginit;
     step  = lnsrch.step;
     ftol  = lnsrch.ftol;
-    if (f <= finit + ftol*(ginit*step))
+    if (fx <= finit + ftol*(ginit*step))
         %% Line-search has converged.
         lnsrch.stage = 2;
     else
@@ -58,7 +58,7 @@ function lnsrch = optm_iterate_line_search(lnsrch, f)
         if (smin < smax)
             %% Try a safeguarded parabolic interpolation step.
             q = -ginit*step;
-            r = 2*((f - finit) + q);
+            r = 2*((fx - finit) + q);
             if (q <= smin*r)
                 gamma = smin;
             elseif (q >= smax*r)

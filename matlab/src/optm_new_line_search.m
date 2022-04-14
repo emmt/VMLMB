@@ -10,10 +10,10 @@
 %%       f(x0 + alpha*d) ≤ f(x0) + ftol*df(x0)*alpha
 %%
 %%   where `f(x)` is the objective function at `x`, `x0` denotes the variables
-%%   at the start of the line-search, `df(x0)` is the directional derivative of
-%%   the objective function at `x0`, `alpha` is the step length and `d` is the
-%%   search direction.  The value of `ftol` must be in the range `(0,0.5]`, the
-%%   default value is `ftol = 1E-4`.
+%%   at the start of the line-search, `d` is the search direction, and
+%%   `df(x0) = d'⋅∇f(x0)` is the directional derivative of the objective
+%%   function at `x0`.  The value of `ftol` must be in the range `(0,0.5]`,
+%%   the default value is `ftol = 1E-4`.
 %%
 %% - 'smin' and 'smax' can be used to specify relative bounds for safeguarding
 %%   the step length.  When a step `alpha` is unsuccessful, a new backtracking
@@ -27,12 +27,12 @@
 %%   emulates the usual Armijo's method.  Default values are `smin = 0.2` and
 %%   `smax = 0.9`.
 %%
-%% Note that when Armijo's conditon does not hold, the quadratic interpolation
+%% Note that when Armijo's condition does not hold, the quadratic interpolation
 %% yields `gamma < 1/(2 - 2*ftol)`.  Hence, taking an upper bound
 %% `smax > 1/(2 - 2*ftol)` has no effects while taking a lower bound
 %% `smin ≥ 1/(2 - 2*ftol)` yields a safeguarded `gamma` always equal to
 %% `smin`.  Therefore, to benefit from quadratic interpolation, one should
-%% choose `smin < 1/(2 - 2*ftol)`.
+%% choose `smin < smax ≤ 1/(2 - 2*ftol)`.
 %%
 %% See documentation of `optm_iterate_line_search` for a complete usage example.
 function lnsrch = optm_new_line_search(varargin)
