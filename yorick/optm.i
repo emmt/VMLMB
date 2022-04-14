@@ -150,14 +150,14 @@ func optm_conjgrad(A, b, x0, &status, precond=, maxiter=, restart=, verb=,
 
      ## Returned Status
 
-     The function retuns the solution `x` and set optional output variable
+     The function returns the solution `x` and set optional output variable
      `status` with one of the following termination codes:
 
      - `status = OPTM_NOT_POSITIVE_DEFINITE` if the left-hand-side matrix `A`
        is found to be not positive definite;
 
      - `status = OPTM_TOO_MANY_ITERATIONS` if the maximum number of iterations
-       have been reached;
+       has been reached;
 
      - `status = OPTM_FTEST_SATISFIED` if convergence occurred because the
        function reduction satisfies the criterion specified by `ftol`;
@@ -280,7 +280,7 @@ func optm_conjgrad(A, b, x0, &status, precond=, maxiter=, restart=, verb=,
             break;
         }
 
-        // Compute search direction.
+        // Compute search direction `p`.
         if (restarting) {
             // Restarting or first iteration.
             eq_nocopy, p, z;
@@ -290,7 +290,7 @@ func optm_conjgrad(A, b, x0, &status, precond=, maxiter=, restart=, verb=,
             p = z + beta*p; // FIXME: optm_combine, p, +1, z, beta, p;
         }
 
-        // Compute optimal step size.
+        // Compute optimal step size `alpha` along search direction `p`.
         q = [];
         q = A(p); // q = A*p
         gamma = optm_inner(p, q);
@@ -387,10 +387,10 @@ local optm_iterate_line_search;
          f(x0 + alpha*d) ≤ f(x0) + ftol*df(x0)*alpha
 
      where `f(x)` is the objective function at `x`, `x0` denotes the variables
-     at the start of the line-search, `df(x0)` is the directional derivative of
-     the objective function at `x0`, `alpha` is the step length and `d` is the
-     search direction.  The value of `ftol` must be in the range `(0,0.5]`, the
-     default value is `ftol = 1E-4`.
+     at the start of the line-search, `d` is the search direction, and `df(x0)
+     = d'⋅∇f(x0)` is the directional derivative of the objective function at
+     `x0`.  The value of `ftol` must be in the range `(0,0.5]`, the default
+     value is `ftol = 1E-4`.
 
      Keywords `smin` and `smax` can be used to specify relative bounds for
      safeguarding the step length.  When a step `alpha` is unsuccessful, a new
@@ -402,7 +402,7 @@ local optm_iterate_line_search;
      with `gamma` safeguarded in the range `[smin,smax]`.  The following
      constraints must hold: `0 < smin ≤ smax < 1`.  Taking `smin = smax = 0.5`
      emulates the usual Armijo's method.  Default values are `smin = 0.2` and
-     `smax = 0.9`.
+     `smax = 1/(2 - 2*ftol)`.
 
      The subroutine `optm_start_line_search` shall be called to initialize each
      new line-search with arguments: `lnsrch` the line-search instance, `f0`
@@ -410,15 +410,15 @@ local optm_iterate_line_search;
      line-search, `df0` the directional derivative of the objective function at
      `x0` and `stp > 0` a guess for the first step to try.
 
-     Note that when Armijo's conditon does not hold, the quadratic
+     Note that when Armijo's condition does not hold, the quadratic
      interpolation yields `gamma < 1/(2 - 2*ftol)`.  Hence, taking an upper
      bound `smax > 1/(2 - 2*ftol)` has no effects while taking a lower bound
      `smin ≥ 1/(2 - 2*ftol)` yields a safeguarded `gamma` always equal to
      `smin`.  Therefore, to benefit from quadratic interpolation, one should
-     choose `smin < 1/(2 - 2*ftol)`.
+     choose `smin < smax ≤ 1/(2 - 2*ftol)`.
 
      The subroutine `optm_iterate_line_search` shall be called to pursue the
-     line-search arguments: `lnsrch` the line-search instance, `f` the
+     line-search arguments: `lnsrch` the line-search instance, `fx = f(x)` the
      objective function at `x = x0 + lnsrch.step*d` the variables at the
      current position on the line-search.
 
@@ -504,13 +504,13 @@ func optm_start_line_search(&lnsrch, f0, df0, stp)
     return lnsrch;
 }
 
-func optm_iterate_line_search(&lnsrch, f)
+func optm_iterate_line_search(&lnsrch, fx)
 {
     finit = lnsrch.finit;
     ginit = lnsrch.ginit;
     step  = lnsrch.step;
     ftol  = lnsrch.ftol;
-    if (f <= finit + ftol*(ginit*step)) {
+    if (fx <= finit + ftol*(ginit*step)) {
         // Line-search has converged.
         lnsrch.stage = 2;
     } else {
@@ -520,7 +520,7 @@ func optm_iterate_line_search(&lnsrch, f)
         if (smin < smax) {
             // Compute a safeguarded parabolic interpolation step.
             q = -ginit*step;
-            r = 2*((f - finit) + q);
+            r = 2*((fx - finit) + q);
             if (q <= smin*r) {
                 gamma = smin;
             } else if (q >= smax*r) {
@@ -587,7 +587,7 @@ func optm_steepest_descent_step(x, d, fx, fmin, delta, lambda)
     if (delta == delta && delta > 0 && delta < 1) {
         // Use the specified small relative step size.
         if (dnorm < 0) {
-            dnorm =  optm_norm2(d);
+            dnorm = optm_norm2(d);
         }
         xnorm = optm_norm2(x);
         alpha = delta*xnorm/dnorm;
@@ -597,16 +597,16 @@ func optm_steepest_descent_step(x, d, fx, fmin, delta, lambda)
     }
     if (lambda == lambda && lambda > 0 && lambda < INF) {
         // Use typical Hessian eigenvalue if suitable.
-        alpha = 1/lambda;
+        alpha = 1.0/lambda;
         if (alpha > 0 && alpha < INF) {
             return alpha;
         }
     }
     // Eventually use 1/‖d‖.
     if (dnorm < 0) {
-        dnorm =  optm_norm2(d);
+        dnorm = optm_norm2(d);
     }
-    alpha = 1/dnorm;
+    alpha = 1.0/dnorm;
     return alpha;
 }
 
@@ -815,8 +815,8 @@ func optm_clamp(x, xmin, xmax)
      Restrict `x` to the range `[xmin,xmax]` element-wise.  Empty bounds, that
      is `xmin = []` or `xmax = []`, are interpreted as unlimited.
 
-     It is the caller's responsibility to ensure that the bounds are
-     compatible, in other words that `xmin ≤ xmax` holds.
+     If both bounds are specified, it is the caller's responsibility to ensure
+     that the bounds are compatible, in other words that `xmin ≤ xmax` holds.
 
    SEE ALSO: optm_unblocked_variables and optm_line_search_limits.
  */
@@ -904,61 +904,61 @@ func optm_line_search_limits(&amin, &amax, x0, xmin, xmax, d, dir)
  */
 {
     INF = OPTM_INFINITE; // for nicer code ;-)
-    no_lower = is_void(xmin);
-    no_upper = is_void(xmax);
+    unbounded_below = is_void(xmin);
+    unbounded_above = is_void(xmax);
     amin = INF;
-    if (no_lower && no_upper) {
+    if (unbounded_below && unbounded_above) {
         // Quick return if unconstrained.
         amax = INF;
         return;
     }
     amax = 0.0;
     backward = (!is_void(dir) && dir < 0); // Move in backward direction?
-    if (no_lower) {
+    if (unbounded_below) {
         if (backward ? (max(d) > 0) : (min(d) < 0)) {
             amax = INF;
         }
     } else {
-        // Find step sizes to reach any lower bounds.
-        i = a = [];
+        // Find positive step sizes to reach any lower bounds.
+        a = [];
         if (backward) {
             i = where(d > 0);
             if (is_array(i)) {
-                a = x0 - xmin;
+                a = (x0 - xmin)(i)/d(i);
             }
         } else {
             i = where(d < 0);
             if (is_array(i)) {
-                a = xmin - x0;
+                a = (xmin - x0)(i)/d(i);
             }
         }
+        i = [];
         if (!is_void(a)) {
-            a = a(i)/d(i);
             amin = min(amin, min(a));
             amax = max(amax, max(a));
         }
     }
-    if (no_upper) {
+    if (unbounded_above) {
         // No upper bound set.
         if (amax < INF && (backward ? (min(d) < 0) : (max(d) > 0))) {
             amax = INF;
         }
     } else {
-        // Find step sizes to reach any upper bounds.
-        a = i = [];
+        // Find positive step sizes to reach any upper bounds.
+        a = [];
         if (backward) {
             i = where(d < 0);
             if (is_array(i)) {
-                a = x0 - xmax;
+                a = (x0 - xmax)(i)/d(i);
             }
         } else {
             i = where(d > 0);
             if (is_array(i)) {
-                a = xmax - x0;
+                a = (xmax - x0)(i)/d(i);
             }
         }
+        i = [];
         if (!is_void(a)) {
-            a = a(i)/d(i);
             amin = min(amin, min(a));
             if (amax < INF) {
                 amax = max(amax, max(a));
@@ -1543,7 +1543,7 @@ local optm_norminf;
 func _optm_norminf(x)
 /* DOCUMENT optm_norminf(x);
 
-     Yields the infinite norm of `x`, that is max(abs(X)) but computed as
+     Yields the infinite norm of `x`, that is `max(abs(x))` but computed as
      efficiently as possible.
 
    SEE ALSO: optm_norm1, optm_norm2.
@@ -1558,7 +1558,7 @@ func _optm_scale(&x, alpha)
          or optm_scale, x, alpha;
 
      Compute `alpha*x` efficiently and taking care of preserving the
-     floting-point type of `x`.  Argument `x` is overwritten with the result
+     floating-point type of `x`.  Argument `x` is overwritten with the result
      when `optm_scale` is called as a subroutine.
  */
 {
@@ -1575,7 +1575,7 @@ func _optm_update(&y, alpha, x)
 /* DOCUMENT optm_update, y, alpha, x;
 
      Compute `y += alpha*x` efficiently and taking care of preserving the
-     floting-point type of `x` and `y`.
+     floating-point type of `x` and `y`.
  */
 {
     T = (structof(x) == float && structof(y) == float) ? float : double;
