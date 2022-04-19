@@ -633,8 +633,9 @@ class LBFGS:
         self.gamma = 0.0
         self.S     = [None for i in range(m)]
         self.Y     = [None for i in range(m)]
-        self.rho   = _np.full(m, 0.0, _np.double)
         self.alpha = _np.full(m, 0.0, _np.double)
+        self.rho   = _np.full(m, 0.0, _np.double)
+        self.tmp   = _np.full(m, 0.0, _np.double)
 
     def update(self, s, y):
         """
@@ -705,9 +706,9 @@ class LBFGS:
             if not T in FLOATS:
                 T = _np.double
             if freevars.dtype == T:
-                wgt = freevars
+                msk = freevars
             else:
-                wgt = freevars.astype(T)
+                msk = freevars.astype(T)
 
         # Apply the 2-loop L-BFGS recursion algorithm by Matthies & Strang.
         m = self.m
@@ -717,9 +718,13 @@ class LBFGS:
             S = self.S
             Y = self.Y
             alpha = self.alpha
-            rho = self.rho
+            if regular:
+                rho = self.rho
+            else:
+                rho = self.tmp
 
-        inds = [i%m for i in range(self.itr + m - mp, self.itr + m)] # FIXME:
+        last = self.itr + m
+        inds = [i%m for i in range(last - mp, last)]
 
         if regular:
             # Apply the regular L-BFGS recursion.
@@ -740,10 +745,10 @@ class LBFGS:
             # L-BFGS recursion on a subset of free variables specified by a
             # selection of indices.
             gamma = 0.0
-            d *= wgt # restrict argument to the subset of free variables
+            d *= msk # restrict argument to the subset of free variables
             for i in reversed(inds):
                 s_i = S[i]
-                y_i = wgt*Y[i]
+                y_i = msk*Y[i]
                 rho_i = inner(s_i, y_i)
                 if rho_i > 0:
                     if gamma <= 0.0:
@@ -761,7 +766,7 @@ class LBFGS:
                 rho_i = rho[i]
                 if rho_i > 0:
                     beta = inner(d, Y[i])/rho_i
-                    d = update(d, alpha[i] - beta, wgt*S[i])
+                    d = update(d, alpha[i] - beta, msk*S[i])
 
         return (d, gamma > 0)
 
