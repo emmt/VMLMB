@@ -26,7 +26,8 @@ from math import sqrt, isnan
 #------------------------------------------------------------------------------
 # PREAMBLE
 
-FLOATS = (_np.double, _np.float, _np.longdouble)
+# Numpy floating-point `dtype`s.
+FLOATS = (_np.float32, _np.float64, _np.float128)
 
 DEBUG = True
 NOT_POSITIVE_DEFINITE = -1
@@ -704,7 +705,7 @@ class LBFGS:
             regular = False
             T = d.dtype
             if not T in FLOATS:
-                T = _np.double
+                T = _np.float64
             if freevars.dtype == T:
                 msk = freevars
             else:
@@ -1421,12 +1422,12 @@ def promote_multiplier(alpha, x):
     type for multiplying array `x`.
     """
     T = x.dtype
-    if T == _np.double or T == _np.cdouble:
-        return _np.double(alpha)
-    elif T == _np.float or T == _np.cfloat:
-        return _np.float(alpha)
-    elif T == _np.longdouble or T == _np.clongdouble:
-        return _np.longdouble(alpha)
+    if T == _np.float64 or T == _np.complex128:
+        return _np.float64(alpha)
+    elif T == _np.float32 or T == _np.complex64:
+        return _np.float32(alpha)
+    elif T == _np.float128 or T == _np.complex256:
+        return _np.float128(alpha)
 
 def scale(x, alpha):
     """
