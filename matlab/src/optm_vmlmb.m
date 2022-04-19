@@ -452,7 +452,7 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
                 %% Safeguard the step to avoid searching in a region where
                 %% all bounds are overreached.
                 [amin, amax] = optm_line_search_limits(x, lower, upper, ...
-                                                       d, alpha);
+                                                       alpha, d);
                 alpha = min(alpha, amax);
             end
             %% Initialize line-search.

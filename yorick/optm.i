@@ -587,14 +587,20 @@ func optm_steepest_descent_step(x, d, fx, fmin, delta, lambda)
     if (fmin == fmin && fx > fmin) {
         // For a quadratic objective function, the minimum is such that:
         //
-        //     fmin = f(x) - (1/2)*alpha*d'*∇f(x)
+        //     fmin ≈ min_α f(x + α⋅d) = min_α [f(x) + α⋅d'⋅∇f(x) + α²⋅d'⋅∇²f(x)⋅d]
         //
-        // with `alpha` the optimal step.  Hence:
+        // The minimum is for:
         //
-        //     alpha = 2*(f(x) - fmin)/(d'*∇f(x)) = 2*(f(x) - fmin)/‖d‖²
+        //     α = -[d'⋅∇f(x)]/[d'⋅∇²f(x)⋅d]
         //
-        // is an estimate of the step size along `d` if it is plus or minus the
-        // (projected) gradient.
+        // Since `d` is the steepest descent direction, `d = -∇f(x)`, and:
+        //
+        //     fmin ≈ f(x) + (1/2)⋅α⋅d'⋅∇f(x) = f(x) + (1/2)⋅α⋅‖d‖²
+        //
+        // which yields the following step lenth:
+        //
+        //     α ≈ 2⋅(f(x) - fmin)/‖d‖²
+        //
         dnorm = optm_norm2(d);
         alpha = 2*(fx - fmin)/dnorm^2;
         if (alpha > 0 && alpha < INF) {
@@ -888,9 +894,8 @@ func optm_unblocked_variables(x, xmin, xmax, g)
     }
 }
 
-func optm_line_search_limits(&amin, &amax, x0, xmin, xmax, d, dir)
-/* DOCUMENT optm_line_search_limits, amin, amax, x0, xmin, xmax, d;
-         or optm_line_search_limits, amin, amax, x0, xmin, xmax, d, dir;
+func optm_line_search_limits(&amin, &amax, x0, xmin, xmax, pm, d)
+/* DOCUMENT optm_line_search_limits, amin, amax, x0, xmin, xmax, pm, d;
 
      Determine the limits `amin` and `amax` for the step length `alpha` in a
      line-search where iterates `x` are given by:
@@ -899,8 +904,7 @@ func optm_line_search_limits(&amin, &amax, x0, xmin, xmax, d, dir)
 
      where `proj(x)` denotes the orthogonal projection on the convex set
      defined by separable lower and upper bounds `xmin` and `xmax` (unless
-     empty) and where `±` is `-` if `dir` is specified and negative and `+`
-     otherwise.
+     empty) and where `±` is `-` if `pm` is negative `+` otherwise.
 
      On return, output variable `amin` is set to the largest nonnegative step
      length such that if `alpha ≤ amin`, then:
@@ -932,10 +936,16 @@ func optm_line_search_limits(&amin, &amax, x0, xmin, xmax, d, dir)
         return;
     }
     amax = 0.0;
-    backward = (!is_void(dir) && dir < 0); // Move in backward direction?
+    backward = (pm < 0); // Move in backward direction?
     if (unbounded_below) {
-        if (backward ? (max(d) > 0) : (min(d) < 0)) {
-            amax = INF;
+        if (backward) {
+            if (max(d) > 0) {
+                amax = INF;
+            }
+        } else {
+            if (min(d) < 0) {
+                amax = INF;
+            }
         }
     } else {
         // Find positive step sizes to reach any lower bounds.
@@ -951,7 +961,6 @@ func optm_line_search_limits(&amin, &amax, x0, xmin, xmax, d, dir)
                 a = (xmin - x0)(i)/d(i);
             }
         }
-        i = [];
         if (!is_void(a)) {
             amin = min(amin, min(a));
             amax = max(amax, max(a));
@@ -959,8 +968,16 @@ func optm_line_search_limits(&amin, &amax, x0, xmin, xmax, d, dir)
     }
     if (unbounded_above) {
         // No upper bound set.
-        if (amax < INF && (backward ? (min(d) < 0) : (max(d) > 0))) {
-            amax = INF;
+        if (amax < INF) {
+            if (backward) {
+                if (min(d) < 0) {
+                    amax = INF;
+                }
+            } else {
+                if (max(d) > 0) {
+                    amax = INF;
+                }
+            }
         }
     } else {
         // Find positive step sizes to reach any upper bounds.
@@ -976,7 +993,6 @@ func optm_line_search_limits(&amin, &amax, x0, xmin, xmax, d, dir)
                 a = (xmax - x0)(i)/d(i);
             }
         }
-        i = [];
         if (!is_void(a)) {
             amin = min(amin, min(a));
             if (amax < INF) {
@@ -1435,7 +1451,7 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
             if (bounded) {
                 // Safeguard the step to avoid searching in a region where
                 // all bounds are overreached.
-                optm_line_search_limits, amin, amax, x, lower, upper, d, alpha;
+                optm_line_search_limits, amin, amax, x, lower, upper, alpha, d;
                 alpha = min(alpha, amax);
             }
             // Initialize line-search.

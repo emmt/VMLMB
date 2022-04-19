@@ -28,14 +28,20 @@ function alpha = optm_steepest_descent_step(x, d, fx, fmin, delta, lambda)
     if fx > fmin
         %% For a quadratic objective function, the minimum is such that:
         %%
-        %%     fmin = f(x) - (1/2)*alpha*d'*∇f(x)
+        %%     fmin ≈ min_α f(x + α⋅d) = min_α [f(x) + α⋅d'⋅∇f(x) + α²⋅d'⋅∇²f(x)⋅d]
         %%
-        %% with `alpha` the optimal step.  Hence:
+        %% The minimum is for:
         %%
-        %%     alpha = 2*(f(x) - fmin)/(d'*∇f(x)) = 2*(f(x) - fmin)/‖d‖²
+        %%     α = -[d'⋅∇f(x)]/[d'⋅∇²f(x)⋅d]
         %%
-        %% is an estimate of the step size along `d` if it is plus or minus the
-        %% (projected) gradient.
+        %% Since `d` is the steepest descent direction, `d = -∇f(x)`, and:
+        %%
+        %%     fmin ≈ f(x) + (1/2)⋅α⋅d'⋅∇f(x) = f(x) + (1/2)⋅α⋅‖d‖²
+        %%
+        %% which yields the following step lenth:
+        %%
+        %%     α ≈ 2⋅(f(x) - fmin)/‖d‖²
+        %%
         dnorm = norm_of(d);
         alpha = 2*(fx - fmin)/dnorm^2;
         if isfinite(alpha) && alpha > 0

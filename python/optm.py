@@ -558,14 +558,20 @@ def steepest_descent_step(x, d, fx, *, fmin=None, xtiny=None, f2nd=None):
     if not fmin is None and -Inf < fmin < fx:
         # For a quadratic objective function, the minimum is such that:
         #
-        #     fmin = f(x) - (1/2)*alpha*d'*∇f(x)
+        #     fmin ≈ min_α f(x + α⋅d) = min_α [f(x) + α⋅d'⋅∇f(x) + α²⋅d'⋅∇²f(x)⋅d]
         #
-        # with `alpha` the optimal step.  Hence:
+        # The minimum is for:
         #
-        #     alpha = 2*(f(x) - fmin)/(d'*∇f(x)) = 2*(f(x) - fmin)/‖d‖²
+        #     α = -[d'⋅∇f(x)]/[d'⋅∇²f(x)⋅d]
         #
-        # is an estimate of the step size along `d` if it is plus or minus the
-        # (projected) gradient.
+        # Since `d` is the steepest descent direction, `d = -∇f(x)`, and:
+        #
+        #     fmin ≈ f(x) + (1/2)⋅α⋅d'⋅∇f(x) = f(x) + (1/2)⋅α⋅‖d‖²
+        #
+        # which yields the following step lenth:
+        #
+        #     α ≈ 2⋅(f(x) - fmin)/‖d‖²
+        #
         dnorm = norm2(d)
         alpha = 2*(fx - fmin)/(dnorm*dnorm)
         if 0 < alpha < Inf:
@@ -898,7 +904,7 @@ def line_search_limits(x0, xmin, xmax, pm, d):
                 if _np.amin(d) < 0:
                     amax = Inf
             else:
-                if _np.max(d) > 0:
+                if _np.amax(d) > 0:
                     amax = Inf
     else:
         # Find positive step sizes to reach any upper bounds.
