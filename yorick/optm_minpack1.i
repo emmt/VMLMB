@@ -12,15 +12,16 @@
 //         vector `x` of `n` elements which is a multiple (times `factor`,
 //         default 1) of the standard starting point.  For the 7-th problem the
 //         standard starting point is 0, so in this case, if `factor` is not
-//         unity, then the function returns `x` filled with `factor`.
+//         unity, then the function returns `x` filled with `factor`.  The
+//         values of `n` for problems 1,2,3,4,5,10,11,12,16 and 17 are
+//         3,6,3,2,3,2,4,3,2 and 4, respectively.  For problem 7, `n` may be 2
+//         or greater but is usually 6 or 9.  For problems 6,8,9,13,14,15 and
+//         18, `n` may be variable, however it must be even for problem 14, a
+//         multiple of 4 for problem 15, and not greater than 50 for problem
+//         18.
 //
 //     prob(1, x) -> yields the value of the objective function of the problem.
-//         `x` is the parameter array: a vector of length `n`.  The values of
-//         `n` for problems 1,2,3,4,5,10,11,12,16 and 17 are 3,6,3,2,3,2,4,3,2
-//         and 4, respectively.  For problem 7, `n` may be 2 or greater but is
-//         usually 6 or 9.  For problems 6,8,9,13,14,15 and 18, `n` may be
-//         variable, however it must be even for problem 14, a multiple of 4
-//         for problem 15, and not greater than 50 for problem 18.
+//         `x` is the parameter array: a vector of length `n`.
 //
 //     prob(2, x) -> yields the gradient of the objective function of the
 //         problem.
@@ -56,8 +57,8 @@ func optm_minpack1_test(probs, n=, factor=,
 
      Run one or several tests from the MINPACK-1 Project.  Argument `p` is a
      single problem number (in the range 1:18) or a vector of problem numbers.
-     By default, all problems are tested with keywords `mem="max"`, `fmin=0`,
-     and `verb=1`.
+     By default, all problems are tested with keywords `mem="max"` and
+     `verb=1`.
 
    KEYWORDS:
      n - Size of the problem.
@@ -606,7 +607,7 @@ func optm_minpack1_prob_9(job, x, n=, factor=)
         return g;
     } else {
         // Problem name.
-        return "";
+        return "Penalty function II";
     }
 }
 
@@ -1016,7 +1017,7 @@ func optm_minpack1_prob_18(job, x, n=, factor=)
         iev = -1;
         for (i = 1; i <= n; ++i) {
             t = d1*fvec(i);
-            if (iev > 0) t += 1.0/(double(i)*double(i) - 1.0);
+            if (iev > 0) t += 1.0/(i*i - 1.0);
             f += t*t;
             iev = -iev;
         }
@@ -1041,7 +1042,7 @@ func optm_minpack1_prob_18(job, x, n=, factor=)
         iev = -1;
         for (i = 1; i <= n; ++i) {
             fvec(i) *= d1;
-            if (iev > 0) fvec(i) += 1.0/(double(i)*double(i) - 1.0);
+            if (iev > 0) fvec(i) += 1.0/(i*i - 1.0);
             iev = -iev;
         }
         for (j = 1; j <= n; ++j) {
