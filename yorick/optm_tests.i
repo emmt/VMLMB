@@ -39,6 +39,72 @@ func optm_summarize_tests(nil, reset=)
     }
 }
 
+func optm_test_line_search_limits(nil)
+{
+    inf = OPTM_INFINITE;
+    local amin, amax;
+
+    x = [2.0, 3.0, 4.0];
+    d = [0.0, 1.0, 2.0];
+
+    optm_line_search_limits, amin, amax, x, [], [], +1, d;
+    optm_assert, (amin == inf) && (amax == inf), "[amin,amax] == [inf,inf] (1)";
+
+    optm_line_search_limits, amin, amax, x, 0, [], +1, d;
+    optm_assert, (amin == inf) && (amax == inf), "[amin,amax] == [inf,inf] (2)";
+
+    optm_line_search_limits, amin, amax, x, 0, [], -1, d;
+    optm_assert, (amin == 2) && (amax == 3), "[amin,amax] == [2,3] (3)";
+
+    optm_line_search_limits, amin, amax, x, 2, [], -1, d;
+    optm_assert, (amin == 1) && (amax == 1), "[amin,amax] == [1,1] (4)";
+
+    optm_line_search_limits, amin, amax, x, 0, [], +1, d*0;
+    optm_assert, (amin == inf) && (amax == inf), "[amin,amax] == [inf,inf] (5)";
+
+    optm_line_search_limits, amin, amax, x, [], 4, +1, d;
+    optm_assert, (amin == 0) && (amax == 1), "[amin,amax] == [0,1] (6)";
+
+    optm_line_search_limits, amin, amax, x, [], 12, +1, d;
+    optm_assert, (amin == 4) && (amax == 9), "[amin,amax] == [4,9] (7)";
+
+    optm_line_search_limits, amin, amax, x, [], 12, -1, d;
+    optm_assert, (amin == inf) && (amax == inf), "[amin,amax] == [inf,inf] (8)";
+
+    optm_line_search_limits, amin, amax, x, [], 12, +1, d*0;
+    optm_assert, (amin == inf) && (amax == inf), "[amin,amax] == [inf,inf] (9)";
+
+    x = [2.0, 3.0, 4.0];
+    d = [1.0, -1.0, 2.0];
+
+    optm_line_search_limits, amin, amax, x, [], [], +1, d;
+    optm_assert, (amin == inf) && (amax == inf), "[amin,amax] == [inf,inf] (10)";
+
+    optm_line_search_limits, amin, amax, x, 0, [], +1, d;
+    optm_assert, (amin == 3) && (amax == inf), "[amin,amax] == [3,inf] (11)";
+
+    optm_line_search_limits, amin, amax, x, 0, [], -1, d;
+    optm_assert, (amin == 2) && (amax == inf), "[amin,amax] == [2,inf] (12)";
+
+    optm_line_search_limits, amin, amax, x, 2, [], +1, d;
+    optm_assert, (amin == 1) && (amax == inf), "[amin,amax] == [1,inf] (13)";
+
+    optm_line_search_limits, amin, amax, x, 2, [], -1, d;
+    optm_assert, (amin == 0) && (amax == inf), "[amin,amax] == [0,inf] (14)";
+
+    optm_line_search_limits, amin, amax, x, [], 6, +1, d;
+    optm_assert, (amin == 1) && (amax == inf), "[amin,amax] == [1,inf] (15)";
+
+    optm_line_search_limits, amin, amax, x, [], 6, -1, d;
+    optm_assert, (amin == 3) && (amax == inf), "[amin,amax] == [3,inf] (16)";
+
+    optm_line_search_limits, amin, amax, x, 0, 6, +1, d;
+    optm_assert, (amin == 1) && (amax == 4), "[amin,amax] == [1,4] (17)";
+
+    optm_line_search_limits, amin, amax, x, 0, 6, -1, d;
+    optm_assert, (amin == 2) && (amax == 3), "[amin,amax] == [2,3] (18)";
+}
+
 func optm_test_line_search(f, df, stp, lnsrch=, quadratic=)
 {
     if (is_void(lnsrch)) lnsrch = optm_new_line_search();
@@ -93,5 +159,7 @@ func optm_test_f2(a) { return -sin((0.5*a + 1.0)*a); }
 func optm_test_f2_prime(a) { return -cos((0.5*a + 1.0)*a)*(1.0 + a); }
 func optm_test_f2_step(nil) { return 1.7; }
 optm_test_line_search, optm_test_f2, optm_test_f2_prime, optm_test_f2_step();
+
+optm_test_line_search_limits;
 
 optm_summarize_tests, reset=1;

@@ -923,7 +923,8 @@ func optm_line_search_limits(&amin, &amax, x0, xmin, xmax, pm, d)
      Restrictions: `x0` must be feasible and must have the same size as `d`;
      this is not verified for efficiency reasons.
 
-   SEE ALSO: optm_clamp and optm_unblocked_variables.
+   SEE ALSO: `optm_clamp`, `optm_unblocked_variables`, and
+             `optm_line_search_step_max`.
  */
 {
     INF = OPTM_INFINITE; // for nicer code ;-)
@@ -935,7 +936,7 @@ func optm_line_search_limits(&amin, &amax, x0, xmin, xmax, pm, d)
         amax = INF;
         return;
     }
-    amax = 0.0;
+    amax = []; // Upper step length bound not yet found.
     backward = (pm < 0); // Move in backward direction?
     if (unbounded_below) {
         if (backward) {
@@ -962,13 +963,13 @@ func optm_line_search_limits(&amin, &amax, x0, xmin, xmax, pm, d)
             }
         }
         if (!is_void(a)) {
-            amin = min(amin, min(a));
-            amax = max(amax, max(a));
+            amin = min(a);
+            amax = max(a);
         }
     }
     if (unbounded_above) {
         // No upper bound set.
-        if (amax < INF) {
+        if (is_void(amax) || amax < INF) {
             if (backward) {
                 if (min(d) < 0) {
                     amax = INF;
@@ -995,10 +996,15 @@ func optm_line_search_limits(&amin, &amax, x0, xmin, xmax, pm, d)
         }
         if (!is_void(a)) {
             amin = min(amin, min(a));
-            if (amax < INF) {
+            if (is_void(amax)) {
+                amax = max(a);
+            } else if (is_void(amax) || amax < INF) {
                 amax = max(amax, max(a));
             }
         }
+    }
+    if (is_void(amax)) {
+        amax = INF;
     }
 }
 

@@ -46,7 +46,7 @@ function [amin, amax] = optm_line_search_limits(x0, xmin, xmax, pm, d)
     %% Are we moving in backward direction?
     backward = (pm < 0);
     amin = INF;
-    amax = 0.0;
+    amax = []; % Upper step length bound not yet found.
     dmin = min(d(:));
     dmax = max(d(:));
     if isempty(xmin)
@@ -75,13 +75,13 @@ function [amin, amax] = optm_line_search_limits(x0, xmin, xmax, pm, d)
             end
         end
         if ~isempty(a)
-            amin = min(amin, min(a));
-            amax = max(amax, max(a));
+            amin = min(a);
+            amax = max(a);
         end
     end
     if isempty(xmax)
         %% No upper bound set.
-        if amax < INF
+        if isempty(amax) || amax < INF
             if backward
                 if dmin < 0
                     amax = INF;
@@ -108,9 +108,14 @@ function [amin, amax] = optm_line_search_limits(x0, xmin, xmax, pm, d)
         end
         if ~isempty(a)
             amin = min(amin, min(a));
-            if amax < INF
+            if isempty(amax)
+                amax = max(a);
+            elseif amax < INF
                 amax = max(amax, max(a));
             end
         end
+    end
+    if isempty(amax)
+        amax = INF
     end
 end
