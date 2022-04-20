@@ -1,4 +1,4 @@
-%%     [amin, amax] = optm_line_search_limits(x0, xmin, xmax, pm, d)
+%%     [amin, amax] = optm_line_search_limits(x0, xmin, xmax, pm, d);
 %%
 %% Determine the limits `amin` and `amax` for the step length `alpha` in a line
 %% search where iterates `x` are given by:
@@ -36,80 +36,65 @@ function [amin, amax] = optm_line_search_limits(x0, xmin, xmax, pm, d)
     %% instead of 0.2µs if stored in a variable), so use local variables to pay
     %% the price only once.
     INF = Inf();
+    unbounded_below = isempty(xmin);
+    unbounded_above = isempty(xmax);
     amin = INF;
-    if isempty(xmin) && isempty(xmax)
+    if unbounded_below && unbounded_above
         %% Quick return if unconstrained.
         amax = INF;
         return
     end
     amax = -INF; % Upper step length bound not yet found.
-    backward = (pm < 0); % Are we moving in backward direction?
-    dmin = min(d(:));
-    dmax = max(d(:));
-    if isempty(xmin)
-        %% No lower bound set.
-        if backward
-            if dmax > 0
+    if pm < 0
+        %% We are moving in the backward direction.
+        if max(d(:)) > 0
+            if unbounded_below
                 amax = INF;
-            end
-        else
-            if dmin < 0
-                amax = INF;
-            end
-        end
-    else
-        %% Find step sizes to reach any lower bounds.
-        a = [];
-        if backward
-            if dmax > 0
+            else
                 i = d > 0;
                 a = (x0 - xmin)(i) ./ d(i);
-            end
-        else
-            if dmin < 0
-                i = d < 0;
-                a = (xmin - x0)(i) ./ d(i);
+                amin = min(a);
+                amax = max(a);
             end
         end
-        if ~isempty(a)
-            amin = min(a);
-            amax = max(a);
-        end
-    end
-    if isempty(xmax)
-        %% No upper bound set.
-        if amax < INF
-            if backward
-                if dmin < 0
-                    amax = INF;
-                end
-            else
-                if dmax > 0
-                    amax = INF;
-                end
+        if unbounded_above
+            if amax < INF && min(d(:)) < 0
+                amax = INF;
+            end
+        elseif min(d(:)) < 0
+            i = d < 0;
+            a = (x0 - xmax)(i) ./ d(i);
+            amin = min(amin, min(a));
+            if amax < INF
+                amax = max(amax, max(a));
             end
         end
     else
-        %% Find step sizes to reach any upper bounds.
-        a = [];
-        if backward
-            if dmin < 0
+        %% We are moving in the forward direction.
+        if min(d(:)) < 0
+            if unbounded_below
+                amax = INF;
+            else
                 i = d < 0;
-                a = (x0 - xmax)(i) ./ d(i);
-            end
-        else
-            if dmax > 0
-                i = d > 0;
-                a = (xmax - x0)(i) ./ d(i);
+                a = (xmin - x0)(i) ./ d(i);
+                amin = min(a);
+                amax = max(a);
             end
         end
-        if ~isempty(a)
+        if unbounded_above
+            if amax < INF && max(d(:)) > 0
+                amax = INF;
+            end
+        elseif max(d(:)) > 0
+            i = d > 0;
+            a = (xmax - x0)(i) ./ d(i);
             amin = min(amin, min(a));
             if amax < INF
                 amax = max(amax, max(a));
             end
         end
     end
+    %% Upper step length bound may be unlimited.
     if amax < 0
         amax = INF;
     end

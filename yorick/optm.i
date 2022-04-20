@@ -938,69 +938,64 @@ func optm_line_search_limits(&amin, &amax, x0, xmin, xmax, pm, d)
     }
     amax = -INF; // Upper step length bound not yet found.
     backward = (pm < 0); // Move in backward direction?
-    if (unbounded_below) {
-        if (backward) {
+    if (pm < 0) {
+        // We are moving in the backward direction.
+        if (unbounded_below) {
             if (max(d) > 0) {
                 amax = INF;
             }
         } else {
-            if (min(d) < 0) {
-                amax = INF;
-            }
-        }
-    } else {
-        // Find positive step sizes to reach any lower bounds.
-        a = [];
-        if (backward) {
             i = where(d > 0);
             if (is_array(i)) {
                 a = (x0 - xmin)(i)/d(i);
+                amin = min(a);
+                amax = max(a);
+            }
+        }
+        if (unbounded_above) {
+            if (amax < INF && min(d) < 0) {
+                amax = INF;
+            }
+        } else {
+            i = where(d < 0);
+            if (is_array(i)) {
+                a = (x0 - xmax)(i)/d(i);
+                amin = min(amin, min(a));
+                if (amax < INF) {
+                    amax = max(amax, max(a));
+                }
+            }
+        }
+    } else {
+        // We are moving in the forward direction.
+        if (unbounded_below) {
+            if (min(d) < 0) {
+                amax = INF;
             }
         } else {
             i = where(d < 0);
             if (is_array(i)) {
                 a = (xmin - x0)(i)/d(i);
+                amin = min(a);
+                amax = max(a);
             }
         }
-        if (!is_void(a)) {
-            amin = min(a);
-            amax = max(a);
-        }
-    }
-    if (unbounded_above) {
-        // No upper bound set.
-        if (amax < INF) {
-            if (backward) {
-                if (min(d) < 0) {
-                    amax = INF;
-                }
-            } else {
-                if (max(d) > 0) {
-                    amax = INF;
-                }
-            }
-        }
-    } else {
-        // Find positive step sizes to reach any upper bounds.
-        a = [];
-        if (backward) {
-            i = where(d < 0);
-            if (is_array(i)) {
-                a = (x0 - xmax)(i)/d(i);
+        if (unbounded_above) {
+            if (amax < INF && max(d) > 0) {
+                amax = INF;
             }
         } else {
             i = where(d > 0);
             if (is_array(i)) {
                 a = (xmax - x0)(i)/d(i);
-            }
-        }
-        if (!is_void(a)) {
-            amin = min(amin, min(a));
-            if (amax < INF) {
-                amax = max(amax, max(a));
+                amin = min(amin, min(a));
+                if (amax < INF) {
+                    amax = max(amax, max(a));
+                }
             }
         }
     }
+    // Upper step length bound may be unlimited.
     if (amax < 0) {
         amax = INF;
     }

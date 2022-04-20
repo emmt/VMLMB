@@ -870,57 +870,52 @@ def line_search_limits(x0, xmin, xmax, pm, d):
     if unbounded_below and unbounded_above:
         # Quick return if unconstrained.
         return (Inf, Inf)
-
-    # Compute `amin` and `amax`.
-    backward = pm < 0
     z = _np.zeros(d.shape, d.dtype)
     amin = Inf
     amax = -Inf
-    if unbounded_below:
-        if backward:
+    if pm < 0:
+        # We are moving in the backward direction.
+        if unbounded_below:
             if _np.amax(d) > 0:
                 amax = Inf
         else:
-            if _np.amin(d) < 0:
-                amax = Inf
-    else:
-        # Find positive step sizes to reach any lower bounds.
-        a = None
-        if backward:
             i = d > z
             if _np.any(i):
                 a = (x0 - xmin)[i]/d[i]
+                amin = _np.amin(a)
+                amax = _np.amax(a)
+        if unbounded_above:
+            if amax < Inf and _np.amin(d) < 0:
+                amax = Inf
+        else:
+            i = d < z
+            if _np.any(i):
+                a = (x0 - xmax)[i]/d[i]
+                amin = min(amin, _np.amin(a))
+                if amax < Inf:
+                    amax = max(amax, _np.amax(a))
+    else:
+        # We are moving in the forward direction.
+        if unbounded_below:
+            if _np.amin(d) < 0:
+                amax = Inf
         else:
             i = d < z
             if _np.any(i):
                 a = (xmin - x0)[i]/d[i]
-        if not a is None:
-            amin = _np.amin(a)
-            amax = _np.amax(a)
-    if unbounded_above:
-        # No upper bound set.
-        if amax < Inf:
-            if backward:
-                if _np.amin(d) < 0:
-                    amax = Inf
-            else:
-                if _np.amax(d) > 0:
-                    amax = Inf
-    else:
-        # Find positive step sizes to reach any upper bounds.
-        a = None
-        if backward:
-            i = d < z
-            if _np.any(i):
-                a = (x0 - xmax)[i]/d[i]
+                amin = _np.amin(a)
+                amax = _np.amax(a)
+        if unbounded_above:
+            if amax < Inf and _np.amax(d) > 0:
+                amax = Inf
         else:
             i = d > z
             if _np.any(i):
                 a = (xmax - x0)[i]/d[i]
-        if not a is None:
-            amin = min(amin, _np.amin(a))
-            if amax < Inf:
-                amax = max(amax, _np.amax(a))
+                amin = min(amin, _np.amin(a))
+                if amax < Inf:
+                    amax = max(amax, _np.amax(a))
+    # Upper step length bound may be unlimited.
     if amax < 0:
         amax = Inf
     return (amin, amax)
