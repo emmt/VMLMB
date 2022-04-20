@@ -875,7 +875,7 @@ def line_search_limits(x0, xmin, xmax, pm, d):
     backward = pm < 0
     z = _np.zeros(d.shape, d.dtype)
     amin = Inf
-    amax = None
+    amax = -Inf
     if unbounded_below:
         if backward:
             if _np.amax(d) > 0:
@@ -899,7 +899,7 @@ def line_search_limits(x0, xmin, xmax, pm, d):
             amax = _np.amax(a)
     if unbounded_above:
         # No upper bound set.
-        if amax is None or amax < Inf:
+        if amax < Inf:
             if backward:
                 if _np.amin(d) < 0:
                     amax = Inf
@@ -919,11 +919,9 @@ def line_search_limits(x0, xmin, xmax, pm, d):
                 a = (xmax - x0)[i]/d[i]
         if not a is None:
             amin = min(amin, _np.amin(a))
-            if amax is None:
-                amax = _np.amax(a);
-            elif amax < Inf:
+            if amax < Inf:
                 amax = max(amax, _np.amax(a))
-    if  amax is None:
+    if amax < 0:
         amax = Inf
     return (amin, amax)
 

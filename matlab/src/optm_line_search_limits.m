@@ -36,17 +36,14 @@ function [amin, amax] = optm_line_search_limits(x0, xmin, xmax, pm, d)
     %% instead of 0.2µs if stored in a variable), so use local variables to pay
     %% the price only once.
     INF = Inf();
-
-    %% Quick return if unconstrained.
+    amin = INF;
     if isempty(xmin) && isempty(xmax)
-        amin = INF;
+        %% Quick return if unconstrained.
         amax = INF;
         return
     end
-    %% Are we moving in backward direction?
-    backward = (pm < 0);
-    amin = INF;
-    amax = []; % Upper step length bound not yet found.
+    amax = -INF; % Upper step length bound not yet found.
+    backward = (pm < 0); % Are we moving in backward direction?
     dmin = min(d(:));
     dmax = max(d(:));
     if isempty(xmin)
@@ -81,7 +78,7 @@ function [amin, amax] = optm_line_search_limits(x0, xmin, xmax, pm, d)
     end
     if isempty(xmax)
         %% No upper bound set.
-        if isempty(amax) || amax < INF
+        if amax < INF
             if backward
                 if dmin < 0
                     amax = INF;
@@ -108,14 +105,12 @@ function [amin, amax] = optm_line_search_limits(x0, xmin, xmax, pm, d)
         end
         if ~isempty(a)
             amin = min(amin, min(a));
-            if isempty(amax)
-                amax = max(a);
-            elseif amax < INF
+            if amax < INF
                 amax = max(amax, max(a));
             end
         end
     end
-    if isempty(amax)
-        amax = INF
+    if amax < 0
+        amax = INF;
     end
 end

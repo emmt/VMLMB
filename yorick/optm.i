@@ -936,7 +936,7 @@ func optm_line_search_limits(&amin, &amax, x0, xmin, xmax, pm, d)
         amax = INF;
         return;
     }
-    amax = []; // Upper step length bound not yet found.
+    amax = -INF; // Upper step length bound not yet found.
     backward = (pm < 0); // Move in backward direction?
     if (unbounded_below) {
         if (backward) {
@@ -969,7 +969,7 @@ func optm_line_search_limits(&amin, &amax, x0, xmin, xmax, pm, d)
     }
     if (unbounded_above) {
         // No upper bound set.
-        if (is_void(amax) || amax < INF) {
+        if (amax < INF) {
             if (backward) {
                 if (min(d) < 0) {
                     amax = INF;
@@ -996,14 +996,12 @@ func optm_line_search_limits(&amin, &amax, x0, xmin, xmax, pm, d)
         }
         if (!is_void(a)) {
             amin = min(amin, min(a));
-            if (is_void(amax)) {
-                amax = max(a);
-            } else if (is_void(amax) || amax < INF) {
+            if (amax < INF) {
                 amax = max(amax, max(a));
             }
         }
     }
-    if (is_void(amax)) {
+    if (amax < 0) {
         amax = INF;
     }
 }
