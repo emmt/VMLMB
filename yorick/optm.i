@@ -1202,7 +1202,7 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
         fatol = -INF;
         frtol = max(0.0, ftol);
     } else {
-        fatol = max(0.0, ftol(1));
+        fatol = ftol(1);
         frtol = max(0.0, ftol(2));
     }
     if (is_scalar(gtol)) {

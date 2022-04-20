@@ -191,7 +191,7 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
         fatol = -INF;
         frtol = max(0.0, ftol);
     else
-        fatol = max(0.0, ftol(1));
+        fatol = ftol(1);
         frtol = max(0.0, ftol(2));
     end
     if isscalar(gtol)
