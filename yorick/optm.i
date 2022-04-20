@@ -1001,6 +1001,89 @@ func optm_line_search_limits(&amin, &amax, x0, xmin, xmax, pm, d)
     }
 }
 
+func optm_line_search_step_max(x0, xmin, xmax, pm, d)
+/* DOCUMENT amx = optm_line_search_step_max(x0, xmin, xmax, pm, d);
+
+     Determine the step size `amax` along search direction `d` such that:
+
+         alpha ≥ amax  ==>  proj(x0 ± alpha*d) = proj(x0 ± amax*d)
+
+     where `proj(x)` denotes the orthogonal projection on the convex set
+     defined by separable lower and upper bounds `xmin` and `xmax` (unless
+     empty) and where `±` is `-` if `pm` is negative `+` otherwise.
+
+     Restrictions: `x0` must be feasible and must have the same size as `d`;
+     this is not verified for efficiency reasons.
+
+   SEE ALSO: `optm_clamp`, `optm_unblocked_variables`, and
+             `optm_line_search_limits`.
+ */
+{
+    INF = OPTM_INFINITE; // for nicer code ;-)
+    unbounded_below = is_void(xmin);
+    unbounded_above = is_void(xmax);
+    if (unbounded_below && unbounded_above) {
+        // Quick return if unconstrained.
+        return INF;
+    }
+    amax = -INF; // Upper step length bound not yet found.
+    if (pm < 0) {
+        // We are moving in the backward direction.
+        if (unbounded_below) {
+            if (max(d) > 0) {
+                return INF;
+            }
+        } else {
+            i = where(d > 0);
+            if (is_array(i)) {
+                amax = max((x0 - xmin)(i)/d(i));
+                if (amax >= INF) {
+                    return INF;
+                }
+            }
+        }
+        if (unbounded_above) {
+            if (min(d) < 0) {
+                return INF;
+            }
+        } else {
+            i = where(d < 0);
+            if (is_array(i)) {
+                amax = max(amax, max((x0 - xmax)(i)/d(i)));
+            }
+        }
+    } else {
+        // We are moving in the forward direction.
+        if (unbounded_below) {
+            if (min(d) < 0) {
+                return INF;
+            }
+        } else {
+            i = where(d < 0);
+            if (is_array(i)) {
+                amax = max((xmin - x0)(i)/d(i));
+                if (amax >= INF) {
+                    return INF;
+                }
+            }
+        }
+        if (unbounded_above) {
+            if (max(d) > 0) {
+                return INF;
+            }
+        } else {
+            i = where(d > 0);
+            if (is_array(i)) {
+                amax = max(amax, max((xmax - x0)(i)/d(i)));
+            }
+        }
+    }
+    if (amax < 0) {
+        return INF;
+    }
+    return amax;
+}
+
 //-----------------------------------------------------------------------------
 // OPTIMIZATION METHODS
 func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
@@ -1233,8 +1316,6 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
     pg0 = [];        // projected gradient at start of line search
     pgnorm = 0.0;    // Euclidean norm of the (projected) gradient
     alpha = 0.0;     // step length
-    amin = -INF;     // first step length threshold
-    amax = +INF;     // last step length threshold
     evals = 0;       // number of calls to `fg`
     iters = 0;       // number of iterations
     projs = 0;       // number of projections onto the feasible set
@@ -1450,7 +1531,7 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
             if (bounded) {
                 // Safeguard the step to avoid searching in a region where
                 // all bounds are overreached.
-                optm_line_search_limits, amin, amax, x, lower, upper, alpha, d;
+                amax = optm_line_search_step_max(x, lower, upper, 1, d);
                 alpha = min(alpha, amax);
             }
             // Initialize line-search.

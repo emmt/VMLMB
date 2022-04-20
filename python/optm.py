@@ -862,7 +862,8 @@ def line_search_limits(x0, xmin, xmax, pm, d):
     Restrictions: `x0` must be feasible and must have the same size as `d`;
     this is not verified for efficiency reasons.
 
-    See also: `optm.clamp` and `optm.unblocked_variables`.
+    See also: `optm.clamp`, `line_search_step_max`, and
+    `optm.unblocked_variables`.
     """
     Inf = _np.inf
     unbounded_below = xmin is None
@@ -919,6 +920,75 @@ def line_search_limits(x0, xmin, xmax, pm, d):
     if amax < 0:
         amax = Inf
     return (amin, amax)
+
+def line_search_step_max(x0, xmin, xmax, pm, d):
+    """
+    Usage:
+
+        optm.line_search_step_max(x0, xmin, xmax, pm, d) -> amax
+
+    Determine the the step size `amax` along search direction `d` such that:
+
+        alpha ≥ amax  ==>  proj(x0 ± alpha*d) = proj(x0 ± amax*d)
+
+    where `proj(x)` denotes the orthogonal projection on the convex set defined
+    by separable lower and upper bounds `xmin` and `xmax` (unless unspecified)
+    and where `±` is `-` if `pm` is negative and `+` otherwise.
+
+    Restrictions: `x0` must be feasible and must have the same size as `d`;
+    this is not verified for efficiency reasons.
+
+    See also: `optm.clamp`, `line_search_limits`, and
+    `optm.unblocked_variables`.
+    """
+    Inf = _np.inf
+    unbounded_below = xmin is None
+    unbounded_above = xmax is None
+    if unbounded_below and unbounded_above:
+        # Quick return if unconstrained.
+        return Inf
+    z = _np.zeros(d.shape, d.dtype)
+    amax = -Inf
+    if pm < 0:
+        # We are moving in the backward direction.
+        if unbounded_below:
+            if _np.amax(d) > 0:
+                return Inf
+        else:
+            i = d > z
+            if _np.any(i):
+                amax = _np.amax((x0 - xmin)[i]/d[i])
+                if amax >= Inf:
+                    return Inf
+        if unbounded_above:
+            if _np.amin(d) < 0:
+                return Inf
+        else:
+            i = d < z
+            if _np.any(i):
+                amax = max(amax, _np.amax((x0 - xmax)[i]/d[i]))
+    else:
+        # We are moving in the forward direction.
+        if unbounded_below:
+            if _np.amin(d) < 0:
+                return Inf
+        else:
+            i = d < z
+            if _np.any(i):
+                amax = _np.amax((xmin - x0)[i]/d[i])
+                if amax >= Inf:
+                    return Inf
+        if unbounded_above:
+            if _np.amax(d) > 0:
+                return Inf
+        else:
+            i = d > z
+            if _np.any(i):
+                amax = max(amax, _np.amax((xmax - x0)[i]/d[i]))
+    # Upper step length bound may be unlimited.
+    if amax < 0:
+        amax = Inf
+    return amax
 
 #-----------------------------------------------------------------------------
 # VMLMB ALGORITHM
@@ -1119,8 +1189,6 @@ def vmlmb(fg, x0, *, lower=None, upper=None, mem=5, blmvm=False,
     pg0 = None       # projected gradient at start of line search
     pgnorm = 0.0     # Euclidean norm of the (projected) gradient
     alpha = 0.0      # step length
-    amin = -Inf      # first step length threshold
-    amax = +Inf      # last step length threshold
     evals = 0        # number of calls to `fg`
     iters = 0        # number of iterations
     projs = 0        # number of projections onto the feasible set
@@ -1322,7 +1390,7 @@ def vmlmb(fg, x0, *, lower=None, upper=None, mem=5, blmvm=False,
             if bounded:
                 # Safeguard the step to avoid searching in a region where
                 # all bounds are overreached.
-                (amin, amax) = line_search_limits(x, lower, upper, alpha, d)
+                amax = line_search_step_max(x, lower, upper, 1, d)
                 alpha = min(alpha, amax)
 
             # Initialize line-search.

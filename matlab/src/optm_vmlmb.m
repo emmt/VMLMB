@@ -236,8 +236,6 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
     pg0 = [];        % projected gradient at start of line search
     pgnorm = 0.0;    % Euclidean norm of the (projected) gradient
     alpha = 0.0;     % step length
-    amin = -INF;     % first step length threshold
-    amax = +INF;     % last step length threshold
     evals = 0;       % number of calls to `fg`
     iters = 0;       % number of iterations
     projs = 0;       % number of projections onto the feasible set
@@ -451,8 +449,7 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
             if bounded
                 %% Safeguard the step to avoid searching in a region where
                 %% all bounds are overreached.
-                [amin, amax] = optm_line_search_limits(x, lower, upper, ...
-                                                       alpha, d);
+                amax = optm_line_search_step_max(x, lower, upper, 1, d);
                 alpha = min(alpha, amax);
             end
             %% Initialize line-search.
