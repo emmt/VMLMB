@@ -16,7 +16,8 @@
 
 func optm_minpack2_test(ctx,
                         // optm_vmlmb options:
-                        mem=, fmin=, lnsrch=, delta=, epsilon=, lambda=,
+                        mem=, lnsrch=, epsilon=,
+                        f2nd=, fmin=, dxrel=, dxabs=,
                         ftol=, gtol=, xtol=, blmvm=,
                         maxiter=, maxeval=, verb=, cputime=, output=)
 {
@@ -41,8 +42,8 @@ func optm_minpack2_test(ctx,
     }
     fg = optm_minpack2_fg(ctx);
     x = optm_vmlmb(fg, xs, fx, gx, status, lower=xl, upper=xu,
-                   mem=m, fmin=fmin, lnsrch=lnsrch,
-                   delta=delta, epsilon=epsilon, lambda=lambda,
+                   mem=m, lnsrch=lnsrch, epsilon=epsilon,
+                   f2nd=f2nd, fmin=fmin, dxrel=dxrel, dxabs=dxabs,
                    ftol=ftol, gtol=gtol, xtol=xtol, blmvm=blmvm,
                    maxiter=maxiter, maxeval=maxeval, verb=verb,
                    cputime=cputime, output=output);

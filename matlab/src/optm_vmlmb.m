@@ -82,17 +82,8 @@
 %% - Keyword `lnsrch` is to specify line-search settings different than the
 %%   default (see `optm_new_line_search`).
 %%
-%% - Keyword `fmin` is to specify an estimation of the minimum possible value
-%%   of the objective function.  This setting may be used to determine the step
-%%   length along the steepest descent.
-%%
-%% - Keyword `delta` specifies a small size relative to the variables.  This
-%%   setting may be used to determine the step length along the steepest
-%%   descent.
-%%
-%% - Keyword `lambda` specifies an estimate of the magnitude of the eigenvalues
-%%   of the Hessian of the objective function.  This setting may be used to
-%%   determine the step length along the steepest descent.
+%% - Keywords `f2nd`, `fmin`, `dxrel`, and `dxabs` are used to determine the
+%%   step length along the steepest descent (see `optm_steepest_descent_step).
 %%
 %% - Keyword `epsilon` specifies a threshold for a sufficient descent
 %%   condition.  If `epsilon > 0`, then a search direction `d` computed by the
@@ -138,10 +129,11 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
     xtol = 1e-6;
     lnsrch = [];
     verb = 0;
+    f2nd = NAN;
     fmin = NAN;
-    delta = NAN;
+    dxrel = NAN;
+    dxabs = 1.0;
     epsilon = 0.0;
-    lambda = NAN;
     blmvm = FALSE;
     if mod(length(varargin), 2) ~= 0
         error('parameters must be specified as pairs of names and values');
@@ -170,14 +162,18 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
                 lnsrch = val;
             case 'verb'
                 verb = val;
+            case 'f2nd'
+                f2nd = val;
             case 'fmin'
                 fmin = val;
-            case 'delta'
-                delta = val;
+            case 'dxrel'
+                dxrel = val;
+            case 'dxabs'
+                dxabs = val;
             case 'epsilon'
                 epsilon = val;
-            case 'lambda'
-                lambda = val;
+            case 'f2nd'
+                f2nd = val;
             case 'blmvm'
                 blmvm = (val ~= 0);
             otherwise
@@ -443,8 +439,8 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
                 %% descent direction `d`.  Note that `pgnorm`, the Euclidean
                 %% norm of the (projected) gradient, is also that of `d` in
                 %% that case.
-                alpha = optm_steepest_descent_step(x, pgnorm, f, fmin, ...
-                                                   delta, lambda);
+                alpha = optm_steepest_descent_step(x, pgnorm, f, ...
+                                                   f2nd, fmin, dxrel, dxabs);
             end
             if bounded
                 %% Safeguard the step to avoid searching in a region where

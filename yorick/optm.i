@@ -550,11 +550,12 @@ func optm_iterate_line_search(&lnsrch, fx)
     return lnsrch;
 }
 
-func optm_steepest_descent_step(x, d, fx, fmin, delta, lambda)
-/* DOCUMENT alpha = optm_steepest_descent_step(x, d, fx, fmin, delta, lambda);
+func optm_steepest_descent_step(x, d, fx, f2nd, fmin, dxrel, dxabs)
+/* DOCUMENT alpha = optm_steepest_descent_step(x, d, fx,
+                                               f2nd, fmin, dxrel, dxabs);
 
      Determine the length `alpha` of the first trial step along the steepest
-     descent direction.  Arguments are:
+     descent direction.  The leading arguments are:
 
      - `x` the current variables (or their Euclidean norm).
 
@@ -564,19 +565,31 @@ func optm_steepest_descent_step(x, d, fx, fmin, delta, lambda)
 
      - `fx` the value of the objective function at `x`.
 
+     The function returns the first valid step length that is computed
+     according to the following trailing arguments (in the listed order):
+
+     - `f2nd` a typical value of the second derivatives of the objective
+       function.
+
      - `fmin` an estimate of the minimal value of the objective function.
 
-     - `delta` a small step size relative to the norm of the variables.
+     - `dxrel` a small step size relative to the norm of the variables.
 
-     - `lambda` an estimate of the magnitude of the eigenvalues of the
-       Hessian of the objective function.
+     - `dxabs` an absolute size in the norm of the change of variables.
 
    SEE ALSO: optm_start_line_search.
  */
 {
-    // We use the statement `val == val` to ensure that `val` is not a NaN.
+    // We rely the fact that comparisons involving a NaN always yield false.
     INF = OPTM_INFINITE;
-    if (fmin == fmin && fx > fmin) {
+    if (0 < f2nd && f2nd < INF) {
+        // Use typical value of second derivative of objective function.
+        alpha = 1.0/f2nd;
+        if (0 < alpha && alpha < INF) {
+            return alpha;
+        }
+    }
+    if (-INF < fmin && fmin < fx) {
         // For a quadratic objective function, the minimum is such that:
         //
         //     fmin ≈ min_α f(x + α⋅d) = min_α [f(x) + α⋅d'⋅∇f(x) + α²⋅d'⋅∇²f(x)⋅d]
@@ -595,36 +608,34 @@ func optm_steepest_descent_step(x, d, fx, fmin, delta, lambda)
         //
         dnorm = optm_norm2(d);
         alpha = 2*(fx - fmin)/dnorm^2;
-        if (alpha > 0 && alpha < INF) {
+        if (0 < alpha && alpha < INF) {
             return alpha;
         }
     } else {
         dnorm = -1; // Euclidean norm of `d` not yet computed.
     }
-    if (delta == delta && delta > 0 && delta < 1) {
-        // Use the specified small relative step size.
+    if (0 < dxrel && dxrel < 1) {
+        // Use relative norm of initial change of variables.
         if (dnorm < 0) {
             dnorm = optm_norm2(d);
         }
         xnorm = optm_norm2(x);
-        alpha = delta*xnorm/dnorm;
-        if (alpha > 0 && alpha < INF) {
+        alpha = dxrel*xnorm/dnorm;
+        if (0 < alpha && alpha < INF) {
             return alpha;
         }
     }
-    if (lambda == lambda && lambda > 0 && lambda < INF) {
-        // Use typical Hessian eigenvalue if suitable.
-        alpha = 1.0/lambda;
-        if (alpha > 0 && alpha < INF) {
+    if (0 < dxabs && dxabs < INF) {
+        // Use absolute norm of initial change of variables.
+        if (dnorm < 0) {
+            dnorm = optm_norm2(d);
+        }
+        alpha = dxabs/dnorm;
+        if (0 < alpha && alpha < INF) {
             return alpha;
         }
     }
-    // Eventually use 1/‖d‖.
-    if (dnorm < 0) {
-        dnorm = optm_norm2(d);
-    }
-    alpha = 1.0/dnorm;
-    return alpha;
+    error, "invalid settings for steepest descent step length";
 }
 
 //-----------------------------------------------------------------------------
@@ -1079,8 +1090,8 @@ func optm_line_search_step_max(x0, xmin, xmax, pm, d)
 //-----------------------------------------------------------------------------
 // OPTIMIZATION METHODS
 
-func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
-                delta=, epsilon=, lambda=, ftol=, gtol=, xtol=, blmvm=,
+func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, blmvm=, lnsrch=,
+                f2nd=, fmin=, dxrel=, dxabs=, epsilon=, ftol=, gtol=, xtol=,
                 maxiter=, maxeval=, verb=, printer=, output=, cputime=,
                 observer=, throwerrors=)
 /* DOCUMENT x = optm_vmlmb(fg, x0, [f, g, status,] lower=, upper=, mem=);
@@ -1175,17 +1186,9 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
      - Keyword `lnsrch` is to specify line-search settings different than the
        default (see `optm_new_line_search`).
 
-     - Keyword `fmin` is to specify an estimation of the minimum possible value
-       of the objective function.  This setting may be used to determine the
-       step length along the steepest descent.
-
-     - Keyword `delta` specifies a small size relative to the variables.  This
-       setting may be used to determine the step length along the steepest
-       descent.
-
-     - Keyword `lambda` specifies an estimate of the magnitude of the
-       eigenvalues of the Hessian of the objective function.  This setting may
-       be used to determine the step length along the steepest descent.
+     - Keywords `f2nd`, `fmin`, `dxrel`, and `dxabs` are used to determine the
+       step length along the steepest descent (see
+       `optm_steepest_descent_step).
 
      - Keyword `epsilon` specifies a threshold for a sufficient descent
        condition.  If `epsilon > 0`, then a search direction `d` computed by
@@ -1258,10 +1261,11 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
     if (is_void(lnsrch)) lnsrch = optm_new_line_search();
     if (is_void(verb)) verb = 0;
     if (is_void(printer)) printer = _optm_vmlmb_printer;
+    if (is_void(f2nd)) f2nd = NAN;
     if (is_void(fmin)) fmin = NAN;
-    if (is_void(delta)) delta = NAN;
+    if (is_void(dxrel)) dxrel = NAN;
+    if (is_void(dxabs)) dxabs = 1.0;
     if (is_void(epsilon)) epsilon = 0.0;
-    if (is_void(lambda)) lambda = NAN;
     if (is_void(blmvm)) blmvm = FALSE;
     if (is_void(throwerrors)) throwerrors = TRUE;
 
@@ -1518,8 +1522,8 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
                 // descent direction `d`.  Note that `pgnorm`, the Euclidean
                 // norm of the (projected) gradient, is also that of `d` in
                 // that case.
-                alpha = optm_steepest_descent_step(x, pgnorm, f, fmin,
-                                                   delta, lambda);
+                alpha = optm_steepest_descent_step(x, pgnorm, f, f2nd,
+                                                   fmin, dxrel, dxabs);
             }
             if (bounded) {
                 // Safeguard the step to avoid searching in a region where

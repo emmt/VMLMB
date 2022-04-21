@@ -1,7 +1,8 @@
-%%     alpha = optm_steepest_descent_step(x, d, fx, fmin, delta, lambda);
+%%     alpha = optm_steepest_descent_step(x, d, fx, f2nd, fmin, ...
+%%                                        dxrel, dxabs);
 %%
 %% yields the length of the first trial step along the steepest descent
-%% direction.  Arguments are:
+%% direction.  The leading arguments are:
 %%
 %% - `x` the current variables (or their Euclidean norm).
 %%
@@ -11,21 +12,32 @@
 %%
 %% - `fx` the value of the objective function at `x`.
 %%
+%% The function returns the first valid step length that is computed according
+%% to the following trailing arguments (in the listed order):
+%%
+%% - `f2nd` a typical value of the second derivatives of the objective
+%%   function.
+%%
 %% - `fmin` an estimate of the minimal value of the objective function.
 %%
-%% - `delta` a small step size relative to the norm of the variables.
+%% - `dxrel` a small step size relative to the norm of the variables.
 %%
-%% - `lambda` an estimate of the magnitude of the eigenvalues of the
-%%   Hessian of the objective function.
-%%
-function alpha = optm_steepest_descent_step(x, d, fx, fmin, delta, lambda)
-    if nargin ~= 6
+%% - `dxabs` an absolute size in the norm of the change of variables.
+function alpha = optm_steepest_descent_step(x, d, fx, f2nd, fmin, dxrel, dxabs)
+    if nargin ~= 7
         print_usage;
     end
     % Note that we rely on the behavior of NaN's (in particular for
     % comparisons) to simplify the checking of the validity of the different
     % cases.
-    if fx > fmin
+    if isfinite(f2nd) && f2nd > 0
+        %% Use typical value of second derivative of objective function.
+        alpha = 1/f2nd;
+        if isfinite(alpha) && alpha > 0
+            return
+        end
+    end
+    if isfinite(fmin) && fmin < fx
         %% For a quadratic objective function, the minimum is such that:
         %%
         %%     fmin ≈ min_α f(x + α⋅d) = min_α [f(x) + α⋅d'⋅∇f(x) + α²⋅d'⋅∇²f(x)⋅d]
@@ -50,27 +62,28 @@ function alpha = optm_steepest_descent_step(x, d, fx, fmin, delta, lambda)
     else
         dnorm = -1;
     end
-    if delta > 0 && delta < 1
-        %% Use the specified small relative step size.
+    if 0 < dxrel && dxrel < 1
+        %% Use relative norm of initial change of variables.
        if dnorm < 0
             dnorm = norm_of(d);
         end
         xnorm = norm_of(x);
-        alpha = delta*xnorm/dnorm;
+        alpha = dxrel*xnorm/dnorm;
         if isfinite(alpha) && alpha > 0
             return
         end
     end
-    %% Use typical Hessian eigenvalue if suitable.
-    alpha = 1/lambda;
-    if isfinite(alpha) && alpha > 0
-        return
+    if isfinite(dxabs) && 0 < dxabs
+        %% Use absolute norm of initial change of variables.
+        if dnorm < 0
+            dnorm = norm_of(d);
+        end
+        alpha = dxabs/dnorm;
+        if isfinite(alpha) && alpha > 0
+            return
+        end
     end
-    %% Eventually use 1/‖d‖.
-    if dnorm < 0
-        dnorm = norm_of(d);
-    end
-    alpha = 1/dnorm;
+    error('invalid settings for steepest descent step length');
 end
 
 %% This function yields the norm of an argument that may be an array or its

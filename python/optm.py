@@ -530,10 +530,12 @@ class LineSearch:
         """Get next line-search step to take."""
         return self._step
 
-def steepest_descent_step(x, d, fx, *, fmin=None, xtiny=None, f2nd=None):
+def steepest_descent_step(x, d, fx, *, f2nd=None, fmin=None,
+                          dxrel=None, dxabs=None):
     """Determine a step length along the steepest descent.
 
-        alpha = optm.steepest_descent_step(x, d, fx, fmin, xtiny, f2nd)
+        alpha = optm.steepest_descent_step(x, d, fx, *,
+                                           f2nd, fmin, dxrel, dxabs)
 
     yields the length `alpha` of the first trial step along the steepest
     descent direction.  Arguments are:
@@ -547,17 +549,28 @@ def steepest_descent_step(x, d, fx, *, fmin=None, xtiny=None, f2nd=None):
 
     - `fx` the value of the objective function at `x`.
 
+    The function returns the first valid step length that is computed according
+    to the following keywords (in the listed order):
+
+    - `f2nd` a typical value of the second derivatives of the objective
+      function.
+
     - `fmin` an estimate of the minimal value of the objective function.
 
-    - `xtiny` a small step size relative to the norm of the variables.
+    - `dxrel` a small step size relative to the norm of the variables.
 
-    - `f2nd` an estimate of the magnitude of the eigenvalues of the Hessian
-      (2nd derivatives) of the objective function.
+    - `dxabs` an absolute size in the norm of the change of variables.
 
     See also: `optm.LineSearch`.
 
     """
     Inf = _np.inf
+    if not f2nd is None and 0 < f2nd < Inf:
+        # Use typical value of second derivative of objective function.
+        alpha = 1.0/f2nd
+        if 0 < alpha < Inf:
+            return alpha
+
     if not fmin is None and -Inf < fmin < fx:
         # For a quadratic objective function, the minimum is such that:
         #
@@ -582,26 +595,24 @@ def steepest_descent_step(x, d, fx, *, fmin=None, xtiny=None, f2nd=None):
     else:
         dnorm = None # Euclidean norm of `d` not yet computed.
 
-    if not xtiny is None and 0 < xtiny < 1:
-        # Use the specified small relative step size.
+    if not dxrel is None and 0 < dxrel < 1:
+        # Use relative norm of initial change of variables.
         if dnorm is None:
             dnorm = norm2(d)
         xnorm = norm2(x)
-        alpha = xtiny*xnorm/dnorm
+        alpha = dxrel*xnorm/dnorm
         if 0 < alpha < Inf:
             return alpha
 
-    if not f2nd is None and 0 < f2nd < Inf:
-        # Use typical Hessian eigenvalue if suitable.
-        alpha = 1.0/f2nd
-        if 0 < alpha < Inf:
+    if not dxabs is None and 0 < dxabs < Inf
+        # Use absolute norm of initial change of variables.
+        if dnorm is None:
+            dnorm = norm2(d)
+        alpha = dxabs/dnorm
+        if 0 < alpha < Inf
             return alpha
 
-    # Eventually use 1/‖d‖.
-    if dnorm is None:
-        dnorm = norm2(d)
-    alpha = 1.0/dnorm
-    return alpha
+    raise ValueError("invalid settings for steepest descent step length")
 
 #------------------------------------------------------------------------------
 # L-BFGS APPROXIMATION
@@ -834,8 +845,7 @@ def unblocked_variables(x, xmin, xmax, g):
             return ((g > zero)&(x > xmin))|((g < zero)&(x < xmax))
 
 def line_search_limits(x0, xmin, xmax, pm, d):
-    """
-    Usage:
+    """Get limits on line search step length.
 
         optm.line_search_limits(x0, xmin, xmax, pm, d) -> (amin, amax)
 
@@ -867,6 +877,7 @@ def line_search_limits(x0, xmin, xmax, pm, d):
 
     See also: `optm.clamp`, `line_search_step_max`, and
     `optm.unblocked_variables`.
+
     """
     Inf = _np.inf
     unbounded_below = xmin is None
@@ -925,8 +936,7 @@ def line_search_limits(x0, xmin, xmax, pm, d):
     return (amin, amax)
 
 def line_search_step_max(x0, xmin, xmax, pm, d):
-    """
-    Usage:
+    """Get upper bound on line search step length.
 
         optm.line_search_step_max(x0, xmin, xmax, pm, d) -> amax
 
@@ -943,6 +953,7 @@ def line_search_step_max(x0, xmin, xmax, pm, d):
 
     See also: `optm.clamp`, `line_search_limits`, and
     `optm.unblocked_variables`.
+
     """
     Inf = _np.inf
     unbounded_below = xmin is None
@@ -1005,12 +1016,12 @@ def vmlmb_printer(output, iters, evals, rejects,
     print(f"{iters:7d} {t*1e3:11.3f} {evals:7d} {rejects:7d} {fx:23.15e} {pgnorm:11.3e} {alpha:11.3e}", file=output)
 
 def vmlmb(fg, x0, *, lower=None, upper=None, mem=5, blmvm=False,
-          lnsrch=LineSearch(), fmin=None, xtiny=None, f2nd=None,
+          lnsrch=LineSearch(),
+          f2nd=None, fmin=None, dxrel=None, dxabs=1.0,
           epsilon=0.0, ftol=1.0e-8, gtol=1.0e-5, xtol=1.0e-6,
           maxiter=_np.inf, maxeval=_np.inf, verb=0, throwerrors=True,
           printer=vmlmb_printer, observer=None, output=sys.stdout):
-    """
-    Usage:
+    """Minimize non-linear objective function subject to bound constaints.
 
         (x, fx, gx, status) = optm.vmlmb(fg, x0, lower=, upper=, mem=, ...)
 
@@ -1098,17 +1109,8 @@ def vmlmb(fg, x0, *, lower=None, upper=None, mem=5, blmvm=False,
     - Keyword `lnsrch` is to specify line-search settings different than the
       default (see `optm.LineSearch`).
 
-    - Keyword `fmin` is to specify an estimation of the minimum possible value
-      of the objective function.  This setting may be used to determine the
-      step length along the steepest descent.
-
-    - Keyword `xtiny` specifies a small size relative to the variables.  This
-      setting may be used to determine the step length along the steepest
-      descent.
-
-    - Keyword `f2nd` specifies an estimate of the magnitude of the
-      eigenvalues of the Hessian of the objective function.  This setting may
-      be used to determine the step length along the steepest descent.
+    - Keywords `f2nd`, `fmin`, `dxrel`, and `dxabs` are used to determine the
+      step length along the steepest descent (see `optm.steepest_descent_step).
 
     - Keyword `epsilon` specifies a threshold for a sufficient descent
       condition.  If `epsilon > 0`, then a search direction `d` computed by the
@@ -1387,8 +1389,9 @@ def vmlmb(fg, x0, *, lower=None, upper=None, mem=5, blmvm=False,
                 # descent direction `d`.  Note that `pgnorm`, the Euclidean
                 # norm of the (projected) gradient, is also that of `d` in
                 # that case.
-                alpha = steepest_descent_step(x, pgnorm, f, fmin=fmin,
-                                              xtiny=xtiny, f2nd=f2nd)
+                alpha = steepest_descent_step(x, pgnorm, f,
+                                              f2nd=f2nd, fmin=fmin,
+                                              dxrel=dxrel, dxabs=dxabs)
 
             if bounded:
                 # Safeguard the step to avoid searching in a region where

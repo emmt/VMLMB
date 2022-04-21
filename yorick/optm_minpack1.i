@@ -49,7 +49,8 @@
 
 func optm_minpack1_test(probs, n=, factor=,
                         // optm_vmlmb options:
-                        mem=, fmin=, lnsrch=, delta=, epsilon=, lambda=,
+                        mem=, lnsrch=, epsilon=,
+                        f2nd=, fmin=, dxrel=, dxabs=,
                         ftol=, gtol=, xtol=, blmvm=,
                         maxiter=, maxeval=, verb=, cputime=, output=)
 /* DOCUMENT optm_minpack1_test;
@@ -103,8 +104,8 @@ func optm_minpack1_test(probs, n=, factor=,
         }
         local status, fx, gx;
         x = optm_vmlmb(fg, x0, fx, gx, status,
-                       mem=m, fmin=fmin, lnsrch=lnsrch,
-                       delta=delta, epsilon=epsilon, lambda=lambda,
+                       mem=m, lnsrch=lnsrch, epsilon=epsilon,
+                       f2nd=f2nd, fmin=fmin, dxrel=dxrel, dxabs=dxabs,
                        ftol=ftol, gtol=gtol, xtol=xtol, blmvm=blmvm,
                        maxiter=maxiter, maxeval=maxeval, verb=verb,
                        cputime=cputime, output=output);
