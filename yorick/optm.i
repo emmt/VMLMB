@@ -299,7 +299,7 @@ func optm_conjgrad(A, b, x0, &status, precond=, maxiter=, restart=, verb=,
         // Compute search direction `p`.
         if (restarting) {
             // Restarting or first iteration.
-            eq_nocopy, p, z;
+            p = z;
         } else {
             // Apply recurrence.
             beta = rho/oldrho;
