@@ -165,7 +165,6 @@ function [x, status] = optm_conjgrad(A, b, x, varargin)
     end
 
     %% Initialize local variables.
-    mesg = 0;
     rho = 0.0;
     phi = 0.0;
     phimax = 0.0;
@@ -212,16 +211,10 @@ function [x, status] = optm_conjgrad(A, b, x, varargin)
         end
         if sqrt(rho) <= gtest
             %% Normal convergence in the gradient norm.
-            if verb > 0
-                mesg = 'Convergence in the gradient norm.';
-            end
             status = optm_status('GTEST_SATISFIED');
             break
         end
         if k >= maxiter
-            if verb > 0
-                mesg = 'Too many iteration(s).';
-            end
             status = optm_status('TOO_MANY_ITERATIONS');
             break
         end
@@ -240,31 +233,24 @@ function [x, status] = optm_conjgrad(A, b, x, varargin)
         q = A(p);
         gamma = optm_inner(p, q);
         if ~(gamma > 0)
-            if verb > 0
-                mesg = 'Operator is not positive definite.';
-            end
             status = optm_status('NOT_POSITIVE_DEFINITE');
             break
         end
         alpha = rho/gamma;
 
-        %% Update variables and check for convergence.
+        %% Update variables.
         x = x + alpha*p;
+
+        %% Check for convergence in the function reduction.
         phi = alpha*rho/2;  %% phi = f(x_{k}) - f(x_{k+1}) ≥ 0
         phimax = max(phi, phimax);
         if phi <= optm_tolerance(phimax, ftol)
-            %% Normal convergence in the function reduction.
-            if verb > 0
-                mesg = 'Convergence in the function reduction.';
-            end
             status = optm_status('FTEST_SATISFIED');
             break
         end
+
+        %% Check for convergence in the variables.
         if xtest && alpha*optm_norm2(p) <= optm_tolerance(x, xtol)
-            %% Normal convergence in the variables.
-            if verb > 0
-                mesg = 'Convergence in the variables.';
-            end
             status = optm_status('XTEST_SATISFIED');
             break
         end
@@ -277,9 +263,7 @@ function [x, status] = optm_conjgrad(A, b, x, varargin)
         if mod(k, verb) ~= 0
             printer(k, time() - t0, phi, rho, r, precond);
         end
-        if ischar(mesg)
-            fprintf('# %s\n', mesg);
-        end
+        fprintf('# %s.\n', optm_reason(status));
     end
     if status < 0 && nargout < 2
         %% An error occured while the caller does not retrieve the status.

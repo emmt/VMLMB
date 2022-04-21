@@ -15,6 +15,8 @@ function code = optm_status(str)
             code =  4;
         case 'GTEST_SATISFIED'
             code =  5;
+        case 'UNSTARTED_ALGORITHM'
+            code =  0;
         case 'NOT_POSITIVE_DEFINITE'
             code = -1;
         otherwise

@@ -31,6 +31,7 @@ FLOATS = (_np.float32, _np.float64, _np.float128)
 
 DEBUG = True
 NOT_POSITIVE_DEFINITE = -1
+UNSTARTED_ALGORITHM   =  0
 TOO_MANY_EVALUATIONS  =  1
 TOO_MANY_ITERATIONS   =  2
 FTEST_SATISFIED       =  3
@@ -38,8 +39,7 @@ XTEST_SATISFIED       =  4
 GTEST_SATISFIED       =  5
 
 def reason(status):
-    """
-    Usage:
+    """Get reason of termination status.
 
         str = optm.reason(status)
 
@@ -48,6 +48,8 @@ def reason(status):
 
     - `optm.NOT_POSITIVE_DEFINITE`: the Hessian matrix (or its inverse) of a
       problem is found to be not positive definite;
+
+    - `optm.UNSTARTED_ALGORITHM`: the algorithm has not yet been started;
 
     - `optm.TOO_MANY_ITERATIONS`: the maximum number of iterations has been
       reached;
@@ -65,6 +67,8 @@ def reason(status):
     """
     if status == NOT_POSITIVE_DEFINITE:
         return "LHS operator is not positive definite"
+    elif status == UNSTARTED_ALGORITHM:
+        return "algorithm not yet started"
     elif status == TOO_MANY_EVALUATIONS:
         return "too many evaluations"
     elif status == TOO_MANY_ITERATIONS:
@@ -265,7 +269,6 @@ def conjgrad(A, b, x=None, *, precond=identity, maxiter=None, restart=None,
         x_is_zero = (norm2(x) == 0.0)
 
     # Define local variables.
-    mesg = None   # exit message
     #r = ...      # residuals `r = b - A⋅x`
     #z = ...      # preconditioned residuals `z = M⋅r`
     #p = ...      # search direction `p = z + β⋅p`
@@ -305,22 +308,20 @@ def conjgrad(A, b, x=None, *, precond=identity, maxiter=None, restart=None,
         rho = inner(r, z); # rho = ‖r‖_M^2
         if k == 0:
             # Pre-compute the minimal Mahalanobis norm of the gradient for
-            # convergence.  The Mahalanobis norm of the gradient is equal
-            # to `2⋅sqrt(rho)`.
-            gtest = max(0.0, gatol, 2.0*grtol*sqrt(rho))
+            # convergence.  The Mahalanobis norm of the gradient is equal to
+            # `sqrt(rho)`.
+            gtest = max(0.0, gatol, grtol*sqrt(rho))
 
         if verb > 0 and (k % verb) == 0:
             printer(output, k, elapsed_time(t0), x, phi, r, z, rho)
 
-        if 2.0*sqrt(rho) <= gtest:
+        if sqrt(rho) <= gtest:
             # Normal convergence in the gradient norm.
             status = GTEST_SATISFIED
-            mesg = "Convergence in the gradient norm."
             break
 
         if k >= maxiter:
             status = TOO_MANY_ITERATIONS
-            mesg = "Too many iteration(s)."
             break
 
         # Compute search direction `p`.
@@ -337,41 +338,40 @@ def conjgrad(A, b, x=None, *, precond=identity, maxiter=None, restart=None,
         gamma = inner(p, q)
         if not (gamma > 0.0):
             status = NOT_POSITIVE_DEFINITE
-            mesg = "Operator is not positive definite."
             break
         alpha = rho/gamma
 
-        # Update variables and check for convergence.
-        # FIXME: x += promote_multiplier(alpha, p)*p
+        # Update variables.
         x = update(x, alpha, p) # x += alpha*p
+
+        # Check for convergence in the function reduction.
         phi = alpha*rho/2.0     # phi = f(x_{k}) - f(x_{k+1}) ≥ 0
         phimax = max(phi, phimax)
         if phi <= tolerance(phimax, fatol, frtol):
-            # Normal convergence in the function reduction.
             status = FTEST_SATISFIED
-            mesg = "Convergence in the function reduction."
             break
 
+        # Check for convergence in the variables.
         if xtest and alpha*norm2(p) <= tolerance(x, xatol, xrtol):
-            # Normal convergence in the variables.
             status = XTEST_SATISFIED
-            mesg = "Convergence in the variables."
             break
+
+        # Increment iteration number.
         k += 1
 
     if verb > 0:
         # Print last iteration, if not yet done, and termination message.
         if (k % verb) != 0:
             printer(output, k, elapsed_time(t0), x, phi, r, z, rho)
-        if mesg and printer is conjgrad_printer:
-            print(f"# {mesg}", file=output)
+        if printer is conjgrad_printer:
+            print(f"# {reason(status)}", file=output)
     return (x, status)
 
 #------------------------------------------------------------------------------
 # LINE SEARCH
 
 class LineSearch:
-    """Calling:
+    """Simple line search method with backtracking and parabolic interpolation.
 
         lnsrch = LineSearch(ftol=1e-4, smin=0.2, smax=None)
 
@@ -429,6 +429,7 @@ class LineSearch:
 
     See also: `optm.vmlmb`, `optm.LineSearch.start`, and
     `optm.LineSearch.iterate`.
+
     """
     def __init__(self, ftol=1e-4, smin=0.2, smax=None):
         if ftol <= 0 or ftol > 0.5:
@@ -450,18 +451,17 @@ class LineSearch:
         self._ginit = None
 
     def start(self, f0, df0, stp):
-        """
-        Calling:
+        """Start a new line-search.
 
             lnsrch.start(fx, f0, df0, stp)
 
-        starts a new line-search for line-search instance `lnsrch` with
-        arguments: `f0` the objective function at `x0` the variables at the
-        start of the line-search, `df0` the directional derivative of the
-        objective function at `x0` and `stp > 0` a guess for the first step to
-        try.
+        starts a new line-search for line-search instance `lnsrch` with `f0`
+        the objective function at `x0` the variables at the start of the
+        line-search, `df0` the directional derivative of the objective function
+        at `x0`; and `stp > 0` a guess for the first step to try.
 
         See also: `optm.LineSearch`, `optm.LineSearch.iterate`.
+
         """
         if df0 >= 0:
             raise AssertionError("not a descent direction")
@@ -473,14 +473,16 @@ class LineSearch:
         self._stage = 1
 
     def iterate(self, fx):
-        """
-        Call:
+        """Iterate line-search.
 
             lnsrch.iterate(fx)
 
-        to pursue the line-search started for line-search instance `lnsrch`.
-        Argument `fx = f(x)` with `x = x0 + lnsrch.step()*d` is the objective
-        function at the variables at the current position on the line-search.
+        pursues the line-search started for line-search instance `lnsrch`.
+        Argument `fx = f(x)` is the objective function at
+
+            x = x0 + lnsrch.step()*d
+
+        the current position on the line-search.
 
         Then, if `lnsrch.converged()` is true, the step length `lnsrch.step()`
         is left unchanged and `x` is the new iterate of the optimization
@@ -489,6 +491,7 @@ class LineSearch:
         value at the new iterate.
 
         See also: `optm.LineSearch`, `optm.LineSearch.start`.
+
         """
         finit = self._finit
         ginit = self._ginit
@@ -520,15 +523,15 @@ class LineSearch:
             self._stage = 1
 
     def converged(self):
-        """Yield whether line-search has converged."""
+        """Check whether line-search has converged."""
         return self._stage == 2
 
     def step(self):
-        """Yield next line-search step to take."""
+        """Get next line-search step to take."""
         return self._step
 
 def steepest_descent_step(x, d, fx, *, fmin=None, xtiny=None, f2nd=None):
-    """Calling:
+    """Determine a step length along the steepest descent.
 
         alpha = optm.steepest_descent_step(x, d, fx, fmin, xtiny, f2nd)
 
@@ -1564,7 +1567,7 @@ def tolerance(x, atol, rtol):
     else:
         return max(tol, rtol*norm2(x))
 
-def get_tolerances(tol, atol=0.0):
+def get_tolerances(tol, /, *, atol=0.0):
     """
     Get a 2-tuple of absolute and relative tolerances given tolerance `tol` and
     default absolute tolerance `atol`.  If `tol` is a scalar, it is assumed
@@ -1575,6 +1578,6 @@ def get_tolerances(tol, atol=0.0):
     See also: `optm.tolerance`.
     """
     if _np.isscalar(tol):
-        return (atol, tol)
+        return (atol, max(0.0, tol))
     else:
-        return (tol[0], tol[1])
+        return (tol[0], max(0.0, tol[1]))

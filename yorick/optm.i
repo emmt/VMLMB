@@ -17,6 +17,7 @@
 if (is_void(OPTM_DEBUG)) OPTM_DEBUG = 1n;
 
 OPTM_NOT_POSITIVE_DEFINITE = -1;
+OPTM_UNSTARTED_ALGORITHM   =  0;
 OPTM_TOO_MANY_EVALUATIONS  =  1;
 OPTM_TOO_MANY_ITERATIONS   =  2;
 OPTM_FTEST_SATISFIED       =  3;
@@ -33,6 +34,8 @@ func optm_reason(status)
 {
     if (status == OPTM_NOT_POSITIVE_DEFINITE) {
         return "LHS operator is not positive definite";
+    } else if (status == OPTM_UNSTARTED_ALGORITHM) {
+        return "algorithm not yet started";
     } else if (status == OPTM_TOO_MANY_EVALUATIONS) {
         return "too many evaluations";
     } else if (status == OPTM_TOO_MANY_ITERATIONS) {
@@ -151,7 +154,6 @@ func optm_conjgrad(A, b, x0, &status, precond=, maxiter=, restart=, verb=,
        following condition holds:
 
            ‖x_{k} - x_{k-1}‖ ≤ max(0, xatol, xrtol⋅‖x_{k}‖)
-
 
        where `xatol` and `xrtol` are absolute and relative tolerances specified
        by `xtol` which can be `xtol=[fatol,frtol]` or `xtol=xrtol` and assume
@@ -276,23 +278,21 @@ func optm_conjgrad(A, b, x0, &status, precond=, maxiter=, restart=, verb=,
         rho = optm_inner(r, z); // rho = ‖r‖_M^2
         if (k == 0) {
             // Pre-compute the minimal Mahalanobis norm of the gradient for
-            // convergence.  The Mahalanobis norm of the gradient is equal
-            // to `2⋅sqrt(rho)`.
-            gtest = max(0.0, gatol, 2.0*grtol*sqrt(rho));
+            // convergence.  The Mahalanobis norm of the gradient is equal to
+            // `sqrt(rho)`.
+            gtest = max(0.0, gatol, grtol*sqrt(rho));
         }
         if (verb > 0 && (k % verb) == 0) {
             timer, elapsed;
             printer, output, k, elapsed(3) - t0, x, phi, r, z, rho;
         }
-        if (2.0*sqrt(rho) <= gtest) {
+        if (sqrt(rho) <= gtest) {
             // Normal convergence in the gradient norm.
             status = OPTM_GTEST_SATISFIED;
-            mesg = "Convergence in the gradient norm.";
             break;
         }
         if (k >= maxiter) {
             status = OPTM_TOO_MANY_ITERATIONS;
-            mesg = "Too many iteration(s).";
             break;
         }
 
@@ -312,25 +312,24 @@ func optm_conjgrad(A, b, x0, &status, precond=, maxiter=, restart=, verb=,
         gamma = optm_inner(p, q);
         if (!(gamma > 0.0)) {
             status = OPTM_NOT_POSITIVE_DEFINITE;
-            mesg = "Operator is not positive definite.";
             break;
         }
         alpha = rho/gamma;
 
-        // Update variables and check for convergence.
+        // Update variables.
         optm_update, x, alpha, p; // x += alpha*p
+
+        // Check for convergence in the function reduction.
         phi = alpha*rho/2.0; // phi = f(x_{k}) - f(x_{k+1}) ≥ 0
         phimax = max(phi, phimax);
         if (phi <= optm_tolerance(phimax, fatol, frtol)) {
-            // Normal convergence in the function reduction.
             status = OPTM_FTEST_SATISFIED;
-            mesg = "Convergence in the function reduction.";
             break;
         }
+
+        // Check for convergence in the variables.
         if (xtest && alpha*optm_norm2(p) <= optm_tolerance(x, xatol, xrtol)) {
-            // Normal convergence in the variables.
             status = OPTM_XTEST_SATISFIED;
-            mesg = "Convergence in the variables.";
             break;
         }
     }
@@ -340,8 +339,8 @@ func optm_conjgrad(A, b, x0, &status, precond=, maxiter=, restart=, verb=,
             timer, elapsed;
             printer, output, k, elapsed(3) - t0, x, phi, r, z, rho;
         }
-        if (mesg && printer == optm_conjgrad_printer) {
-            write, output, format="# %s\n", mesg;
+        if (printer == optm_conjgrad_printer) {
+            write, output, format="# Status: %s.\n", optm_reason(status);
         }
     }
     return x;
@@ -503,23 +502,16 @@ func optm_new_line_search(lnsrch, ftol=, smin=, smax=)
 
 func optm_start_line_search(&lnsrch, f0, df0, stp)
 {
-    if (df0 < 0) {
-        if (stp <= 0) {
-            stage = -1;
-            stp = 0.0;
-            error, "first step to try must be strictly greater than 0";
-        } else {
-            stage = 1;
-        }
-    } else {
-        stage = -1;
-        stp = 0.0;
-        error, "not a descent direction";
+    if (!(df0 < 0)) {
+        error, swrite(format="not a descent direction (df0 = %g)", df0);
     }
-    lnsrch.finit = f0
+    if (!(stp > 0)) {
+        error, swrite(format="first step to try must be strictly greater than 0 (stp = %g)", stp);
+    }
+    lnsrch.finit = f0;
     lnsrch.ginit = df0;
     lnsrch.step  = stp;
-    lnsrch.stage = stage;
+    lnsrch.stage = 1;
     return lnsrch;
 }
 
@@ -1086,6 +1078,7 @@ func optm_line_search_step_max(x0, xmin, xmax, pm, d)
 
 //-----------------------------------------------------------------------------
 // OPTIMIZATION METHODS
+
 func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, fmin=, lnsrch=,
                 delta=, epsilon=, lambda=, ftol=, gtol=, xtol=, blmvm=,
                 maxiter=, maxeval=, verb=, printer=, output=, cputime=,
