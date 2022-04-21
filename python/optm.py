@@ -347,7 +347,7 @@ def conjgrad(A, b, x=None, *, precond=identity, maxiter=None, restart=None,
         # Check for convergence in the function reduction.
         phi = alpha*rho/2.0     # phi = f(x_{k}) - f(x_{k+1}) ≥ 0
         phimax = max(phi, phimax)
-        if phi <= tolerance(phimax, fatol, frtol):
+        if phi <= max(0.0, fatol, frtol*phimax):
             status = FTEST_SATISFIED
             break
 
@@ -1571,14 +1571,17 @@ def tolerance(x, atol, rtol):
         return max(tol, rtol*norm2(x))
 
 def get_tolerances(tol, /, *, atol=0.0):
-    """
-    Get a 2-tuple of absolute and relative tolerances given tolerance `tol` and
-    default absolute tolerance `atol`.  If `tol` is a scalar, it is assumed
-    that `atol` and `tol` are the absolute and relative tolerances.  Otherwise,
-    `tol` must specify the absolute and relative tolerances as a 2-tuple (or an
-    array of 2 elements).
+    """Get absolute and relative tolerances.
+
+    This function yields a 2-tuple `(atol, rtol)` of absolute and relative
+    tolerances given tolerance `tol` and default absolute tolerance `atol`.  If
+    `tol` is a scalar, it is assumed that `atol` and `tol` are the absolute and
+    relative tolerances.  Otherwise, `tol` must specify the absolute and
+    relative tolerances as a 2-tuple (or an array of 2 elements).  The relative
+    tolerance `rtol` is always nonnegative.
 
     See also: `optm.tolerance`.
+
     """
     if _np.isscalar(tol):
         return (atol, max(0.0, tol))

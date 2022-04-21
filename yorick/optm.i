@@ -191,36 +191,23 @@ func optm_conjgrad(A, b, x0, &status, precond=, maxiter=, restart=, verb=,
   SEE ALSO: optm_reason, optm_inner.
  */
 {
-    // Get options.
+    // Parse options.
     preconditioned = !is_void(precond);
-    if (is_void(ftol)) ftol = 1.0E-8;
-    if (is_void(gtol)) gtol = 1.0E-5;
-    if (is_void(xtol)) xtol = 1.0E-6;
     if (is_void(verb)) verb = 0;
     if (is_void(printer)) printer = optm_conjgrad_printer;
     if (is_void(maxiter)) maxiter = 2*numberof(b) + 1;
     if (is_void(restart)) restart = min(50, numberof(b) + 1);
-    if (is_scalar(ftol)) {
-        fatol = 0.0;
-        frtol = ftol;
-    } else {
-        fatol = ftol(1);
-        frtol = ftol(2);
-    }
-    if (is_scalar(gtol)) {
-        gatol = 0.0;
-        grtol = gtol;
-    } else {
-        gatol = gtol(1);
-        grtol = gtol(2);
-    }
-    if (is_scalar(xtol)) {
-        xatol = 0.0;
-        xrtol = xtol;
-    } else {
-        xatol = xtol(1);
-        xrtol = xtol(2);
-    }
+
+    // Get tolerances.
+    local fatol, frtol;
+    optm_get_tolerances, fatol, frtol,
+        (is_void(ftol) ? 1.0e-8 : ftol), name="ftol";
+    local gatol, grtol;
+    optm_get_tolerances, gatol, grtol,
+        (is_void(gtol) ? 1.0e-5 : gtol), name="gtol";
+    local xatol, xrtol;
+    optm_get_tolerances, xatol, xrtol,
+        (is_void(xtol) ? 1.0e-6 : xtol), name="xtol";
 
     // Initial solution.
     if (is_void(x0)) {
@@ -250,7 +237,7 @@ func optm_conjgrad(A, b, x0, &status, precond=, maxiter=, restart=, verb=,
     // Conjugate gradient iterations.
     for (k = 0; ; ++k) {
         // Is this the initial or a restarted iteration?
-        restarting = (k == 0 || restart > 0 && (k%restart) == 0);
+        restarting = (k == 0 || (restart > 0 && (k%restart) == 0));
 
         // Compute residuals and their squared norm.
         if (restarting) {
@@ -322,7 +309,7 @@ func optm_conjgrad(A, b, x0, &status, precond=, maxiter=, restart=, verb=,
         // Check for convergence in the function reduction.
         phi = alpha*rho/2.0; // phi = f(x_{k}) - f(x_{k+1}) ≥ 0
         phimax = max(phi, phimax);
-        if (phi <= optm_tolerance(phimax, fatol, frtol)) {
+        if (phi <= max(0.0, fatol, frtol*phimax)) {
             status = OPTM_FTEST_SATISFIED;
             break;
         }
@@ -1255,9 +1242,6 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, blmvm=, lnsrch=,
     if (is_void(mem)) mem = 5;
     if (is_void(maxiter)) maxiter = INF;
     if (is_void(maxeval)) maxeval = INF;
-    if (is_void(ftol)) ftol = 1.0E-8;
-    if (is_void(gtol)) gtol = 1.0E-5;
-    if (is_void(xtol)) xtol = 1.0E-6;
     if (is_void(lnsrch)) lnsrch = optm_new_line_search();
     if (is_void(verb)) verb = 0;
     if (is_void(printer)) printer = _optm_vmlmb_printer;
@@ -1269,29 +1253,16 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, blmvm=, lnsrch=,
     if (is_void(blmvm)) blmvm = FALSE;
     if (is_void(throwerrors)) throwerrors = TRUE;
 
-    // Tolerances.  Most of these are forced to be nonnegative to simplify
-    // tests.
-    if (is_scalar(ftol)) {
-        fatol = -INF;
-        frtol = max(0.0, ftol);
-    } else {
-        fatol = ftol(1);
-        frtol = max(0.0, ftol(2));
-    }
-    if (is_scalar(gtol)) {
-        gatol = 0.0;
-        grtol = max(0.0, gtol);
-    } else {
-        gatol = max(0.0, gtol(1));
-        grtol = max(0.0, gtol(2));
-    }
-    if (is_scalar(xtol)) {
-        xatol = 0.0;
-        xrtol = max(0.0, xtol);
-    } else {
-        xatol = max(0.0, xtol(1));
-        xrtol = max(0.0, xtol(2));
-    }
+    // Get tolerances.
+    local fatol, frtol;
+    optm_get_tolerances, fatol, frtol,
+        (is_void(ftol) ? 1.0e-8 : ftol), name="ftol", atol=-INF;
+    local gatol, grtol;
+    optm_get_tolerances, gatol, grtol,
+        (is_void(gtol) ? 1.0e-5 : gtol), name="gtol", atol=0.0;
+    local xatol, xrtol;
+    optm_get_tolerances, xatol, xrtol,
+        (is_void(xtol) ? 1.0e-6 : xtol), name="xtol", atol=0.0;
 
     // Bound constraints.  For faster code, unlimited bounds are preferentially
     // represented by empty arrays.
@@ -1406,7 +1377,7 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, blmvm=, lnsrch=,
             // Check for algorithm convergence or termination.
             if (evals == 1) {
                 // Compute value for testing the convergence in the gradient.
-                gtest = max(gatol, grtol*pgnorm);
+                gtest = max(0.0, gatol, grtol*pgnorm);
             }
             if (pgnorm <= gtest) {
                 // Convergence in gradient.
@@ -1674,7 +1645,7 @@ func _optm_scale(&x, alpha)
      when `optm_scale` is called as a subroutine.
  */
 {
-    alpha = structof(x) == float ? float(alpha) : double(alpha);
+    alpha = (structof(x) == float ? float : double)(alpha);
     if (am_subroutine()) {
         x *= alpha;
     } else {
@@ -1690,22 +1661,22 @@ func _optm_update(&y, alpha, x)
      floating-point type of `x` and `y`.
  */
 {
-    T = (structof(x) == float && structof(y) == float) ? float : double;
-    y += T(alpha)*x;
+    alpha = (structof(x) == float ? float : double)(alpha);
+    y += alpha*x;
 }
 
 func optm_tolerance(x, atol, rtol)
 /* DOCUMENT tol = optm_tolerance(x, atol, rtol);
 
-     Given absolute and relative tolerances ATOL and RTOL, yields:
+     Given absolute and relative tolerances `atol` and `rtol`, yields:
 
          max(0, atol, rtol*abs(x))    // if `x` is a scalar
          max(0, atol, rtol*norm(x))   // if `x` is an array
 
-    where norm(X) is the Euclidean norm of `x` as computed by optm_norm2 (which
-    to see).  If RTOL ≤ 0, the computation of norm(X) is avoided.
+     where norm(X) is the Euclidean norm of `x` as computed by optm_norm2
+     (which to see).  If `rtol ≤ 0`, the computation of norm(X) is avoided.
 
-   SEE ALSO: optm_norm2.
+   SEE ALSO: `optm_norm2`, `optm_get_tolerances`.
  */
 {
     tol = max(0.0, atol);
@@ -1719,6 +1690,37 @@ func optm_tolerance(x, atol, rtol)
     }
     return max(tol, rtol*a);
 }
+
+func optm_get_tolerances(&atol_ref, &rtol_ref, tol, atol=, name=)
+/* DOCUMENT local atol, rtol;
+            optm_get_tolerances, atol, rtol, tol;
+
+     Extract absolute and relative tolerances `atol` and `rtol` given tolerance
+     `tol`.  Argument `tol` may be a scalar, assumed to be `rtol`, or a vector
+     of 2 values, `[atol,rtol]`.  The relative tolerance `rtol` is always
+     nonnegative.
+
+     Keyword `atol` may be set with a default absolute tolerance, 0.0 by
+     default.
+
+     Keyword `name` may be set with the name of the argument.
+
+   SEE ALSO: `optm_tolerance`.
+ */
+{
+    if (is_scalar(tol)) {
+        atol_ref = (is_void(atol) ? 0.0 : atol + 0.0);
+        rtol_ref = max(0.0, tol + 0.0);
+    } else if (numberof(tol) == 2){
+        atol_ref = tol(1) + 0.0;
+        rtol_ref = max(0.0, tol(2) + 0.0);
+    } else {
+        error, (is_void(name) ?
+                "tolerance must be a scalar or a 2-element vector" :
+                "tolerance `"+name+"` must be a scalar or a 2-element vector");
+    }
+}
+errs2caller, optm_get_tolerances;
 
 func optm_same_dims(a, b)
 /* DOCUMENT optm_same_dims(a, b);
