@@ -10,14 +10,14 @@ called as:
 
     prob_P(0, n=None, factor=None) -> yields the starting point for the problem
         as a vector `x` of `n` elements which is a multiple (times `factor`,
-        default 1) of the standard starting point.  For the 7-th problem the
+        default 1) of the standard starting point. For the 7-th problem the
         standard starting point is 0, so in this case, if `factor` is not
-        unity, then the function returns `x` filled with `factor`.  The values
-        of `n` for problems 1,2,3,4,5,10,11,12,16 and 17 are 3,6,3,2,3,2,4,3,2
-        and 4, respectively.  For problem 7, `n` may be 2 or greater but is
-        usually 6 or 9.  For problems 6,8,9,13,14,15 and 18, `n` may be
-        variable, however it must be even for problem 14, a multiple of 4 for
-        problem 15, and not greater than 50 for problem 18.
+        unity, then the function returns `x` filled with `factor`. The values
+        of `n` for problems 1, 2, 3, 4, 5, 10, 11, 12, 16, and 17 are 3, 6, 3,
+        2, 3, 2, 4, 3, 2, and 4, respectively. For problem 7, `n` may be 2 or
+        greater but is usually 6 or 9. For problems 6, 8, 9, 13, 14, 15 and 18,
+        `n` may be variable, however it must be even for problem 14, a multiple
+        of 4 for problem 15, and not greater than 50 for problem 18.
 
     prob_P(1, x) -> yields the value of the objective function of the problem.
         `x` is the parameter array: a vector of length `n`.
@@ -399,7 +399,7 @@ def prob_7(job=None, x=None, n=None, factor=None):
         # Starting point.
         msg = "N may be 2 or greater but is usually 6 or 9 for problem #7"
         if n is None:
-            print(msg)
+            print("# " + msg)
             n = 6
         elif n < 2:
             raise ValueError(msg)

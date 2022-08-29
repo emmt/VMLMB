@@ -13,12 +13,12 @@
 //         default 1) of the standard starting point.  For the 7-th problem the
 //         standard starting point is 0, so in this case, if `factor` is not
 //         unity, then the function returns `x` filled with `factor`.  The
-//         values of `n` for problems 1,2,3,4,5,10,11,12,16 and 17 are
-//         3,6,3,2,3,2,4,3,2 and 4, respectively.  For problem 7, `n` may be 2
-//         or greater but is usually 6 or 9.  For problems 6,8,9,13,14,15 and
-//         18, `n` may be variable, however it must be even for problem 14, a
-//         multiple of 4 for problem 15, and not greater than 50 for problem
-//         18.
+//         values of `n` for problems 1, 2, 3, 4, 5, 10, 11, 12, 16, and 17 are
+//         3, 6, 3, 2, 3, 2, 4, 3, 2, and 4, respectively.  For problem 7, `n`
+//         may be 2 or greater but is usually 6 or 9.  For problems 6, 8, 9,
+//         13, 14, 15, and 18, `n` may be variable, however it must be even for
+//         problem 14, a multiple of 4 for problem 15, and not greater than 50
+//         for problem 18.
 //
 //     prob(1, x) -> yields the value of the objective function of the problem.
 //         `x` is the parameter array: a vector of length `n`.
@@ -435,7 +435,7 @@ func optm_minpack1_prob_7(job, x, n=, factor=)
         // Starting point.
         msg = "N may be 2 or greater but is usually 6 or 9 for problem #7";
         if (is_void(n)) {
-            write, msg;
+            write, format="# %s\n", msg;
             n = 6;
         } else if (n < 2) error, msg;
         x = array(double, n);
