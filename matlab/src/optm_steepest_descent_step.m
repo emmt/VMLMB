@@ -38,21 +38,44 @@ function alpha = optm_steepest_descent_step(x, d, fx, f2nd, fmin, dxrel, dxabs)
         end
     end
     if isfinite(fmin) && fmin < fx
-        %% For a quadratic objective function, the minimum is such that:
+        %% The behavior of a quadratic objective function f(x) along the search
+        %% direction d starting at x is given by:
         %%
-        %%     fmin ≈ min_α f(x + α⋅d) = min_α [f(x) + α⋅d'⋅∇f(x) + α²⋅d'⋅∇²f(x)⋅d]
+        %%     f(x + α⋅d) = f(x) + α⋅⟨d,∇f(x)⟩ + (1/2)⋅α²⋅⟨d,∇²f(x)⋅d⟩
         %%
-        %% The minimum is for:
+        %% Taking the derivative in α, it can be found that the minimum in α is
+        %% for:
         %%
-        %%     α = -[d'⋅∇f(x)]/[d'⋅∇²f(x)⋅d]
+        %%     α_best = -⟨d,∇f(x)⟩/⟨d,∇²f(x)⋅d⟩
         %%
-        %% Since `d` is the steepest descent direction, `d = -∇f(x)`, and:
+        %% and it is easy to prove that:
         %%
-        %%     fmin ≈ f(x) + (1/2)⋅α⋅d'⋅∇f(x) = f(x) + (1/2)⋅α⋅‖d‖²
+        %%     min_α f(x + α⋅d) = f(x + α_best⋅d)
+        %%                      = f(x) + (1/2)⋅α_best⋅⟨d,∇f(x)⟩
         %%
-        %% which yields the following step lenth:
+        %% If ⟨d,∇f(x)⟩ = 0, then α_best = 0; otherwise, if an inferior bound
+        %% fmin ≤ f(x) (∀ x) is known, then:
         %%
-        %%     α ≈ 2⋅(f(x) - fmin)/‖d‖²
+        %%     fmin ≤ min_α f(x + α⋅d) = f(x) + (1/2)⋅α_best⋅⟨d,∇f(x)⟩
+        %%
+        %% holds and (assuming a convex function along d):
+        %%
+        %%  • if ⟨d,∇f(x)⟩ > 0, then α_best is negative and such that:
+        %%
+        %%        α_best ≥ 2⋅(fmin - f(x))/⟨d,∇f(x)⟩
+        %%
+        %%  • otherwise, ⟨d,∇f(x)⟩ < 0, then α_best is positive and such that:
+        %%
+        %%        α_best ≤ 2⋅(fmin - f(x))/⟨d,∇f(x)⟩
+        %%
+        %% This shows that, in any case, 2⋅(fmin - f(x))/⟨d,∇f(x)⟩ is the step
+        %% of maximum length. The idea is to take this step and, if needed,
+        %% backtrack from there.
+        %%
+        %% When `d = -∇f(x)` (steepest descent direction), the step to try is
+        %% given by:
+        %%
+        %%     2⋅(f(x) - fmin)/‖d‖²
         %%
         dnorm = norm_of(d);
         alpha = 2*(fx - fmin)/dnorm^2;
