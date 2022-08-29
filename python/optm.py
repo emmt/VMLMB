@@ -1,17 +1,18 @@
 # -*- coding: utf-8 -*-
 
-"""
-Pure Python implementations of the linear conjugate gradients (for solving
-uncontrained linear optimization problems) and VMLMB (for solving non-linear of
-bound constrained optimization problems).  VMLMB is a quasi-Newton method ("VM"
-is for "Variable Metric") with low memory requirements ("LM" is for "Limited
-Memory") and which can optionally take into account separable bound constraints
-(the final "B") on the variables.
+"""Pure Python implementations of the VMLMB algorithm (for solving non-linear
+bound constrained optimization problems) and of the linear conjugate gradient
+method (for solving unconstrained linear optimization problems). VMLMB is a
+quasi-Newton method ("VM" is for "Variable Metric") with low memory
+requirements ("LM" is for "Limited Memory") and which can optionally take into
+account separable bound constraints (the final "B") on the variables.
 
-This file is part of the VMLMB software which is licensed under the "Expat" MIT
-license, <https://github.com/emmt/VMLMB>.
+This file is part of the VMLMB software available at
+<https://github.com/emmt/VMLMB> and which is licensed under the "Expat" MIT
+license.
 
 Copyright (C) 2002-2022, Éric Thiébaut <eric.thiebaut@univ-lyon1.fr>
+
 """
 
 # Insure compatibility.
@@ -60,8 +61,8 @@ def reason(status):
     - `optm.GTEST_SATISFIED`: the algorithm terminated because the norm of the
       gradient of the objective function is small enough;
 
-    - `optm.XTEST_SATISFIED``: the algorithm terminated because the variation
-      of variables is small enough.
+    - `optm.XTEST_SATISFIED`: the algorithm terminated because the variation of
+      variables is small enough.
 
     See also: `optm.vmlmb`, `optm.conjgrad`.
     """
@@ -112,8 +113,7 @@ def conjgrad_printer(output, itr, t, x, phi, r, z, rho):
 def conjgrad(A, b, x=None, *, precond=identity, maxiter=None, restart=None,
              verb=0, printer=conjgrad_printer, output=sys.stdout,
              ftol=1.0e-8, gtol=1.0e-5, xtol=1.0e-6):
-    """
-    Usage:
+    """Usage:
 
         (x, status) = conjgrad(A, b, x0=None)
 
@@ -121,13 +121,13 @@ def conjgrad(A, b, x=None, *, precond=identity, maxiter=None, restart=None,
     system of equations `A⋅x = b` in `x`.
 
     Argument `A` implements the left-hand-side (LHS) "matrix" of the equations.
-    It is called as `A(x)` to compute the result of `A⋅x`.  Note that, as `A`
+    It is called as `A(x)` to compute the result of `A⋅x`. Note that, as `A`
     and the preconditioner `M` must be symmetric, it may be faster to apply
     their adjoint.
 
     Argument `b` is the right-hand-side (RHS) "vector" of the equations.
 
-    Optional argument `x0` provides the initial solution.  If `x0` is
+    Optional argument `x0` provides the initial solution. If `x0` is
     unspecified, `x` is initially an array of zeros.
 
     Provided `A` be positive definite, the solution `x` of the equations `A⋅x =
@@ -136,12 +136,12 @@ def conjgrad(A, b, x=None, *, precond=identity, maxiter=None, restart=None,
 
         f(x) = (1/2)⋅x'⋅A⋅x - b'⋅x + ϵ
 
-    where `ϵ` is an arbitrary constant.  The gradient of this objective
-    function is:
+    where `ϵ` is an arbitrary constant. The gradient of this objective function
+    is:
 
         ∇f(x) = A⋅x - b
 
-    hence solving `A⋅x = b` for `x` yields the minimum of `f(x)`.  The
+    hence solving `A⋅x = b` for `x` yields the minimum of `f(x)`. The
     variations of `f(x)` between successive iterations, the norm of the
     gradient `∇f(x)` or the norm of the variation of variables `x` may be used
     to decide the convergence of the algorithm (see keywords `ftol`, `gtol` and
@@ -149,44 +149,43 @@ def conjgrad(A, b, x=None, *, precond=identity, maxiter=None, restart=None,
 
     Algorithm parameters can be specified by the following keywords:
 
-    - Keyword `precond` is to specify a preconditioner `M`.  It may be a
+    - Keyword `precond` is to specify a preconditioner `M`. It may be a
       function name or handle and is called as `M(x)` to compute the result of
-      `M⋅x`.  By default, the un-preconditioned version of the algorithm is
-      run.
+      `M⋅x`. By default, the un-preconditioned version of the algorithm is run.
 
     - Keyword `maxiter` is to specify the maximum number of iterations to
       perform which is `2⋅b.size + 1` by default.
 
     - Keyword `restart` is to specify the number of consecutive iterations
-      before restarting the conjugate gradient recurrence.  Restarting the
-      algorithm is to cope with the accumulation of rounding errors.  By
-      default, `restart = min(50,b.size+1)`.  Set `restart` to a value less or
+      before restarting the conjugate gradient recurrence. Restarting the
+      algorithm is to cope with the accumulation of rounding errors. By
+      default, `restart = min(50,b.size+1)`. Set `restart` to a value less or
       equal zero or greater than `maxiter` if you do not want that any restarts
       ever occur.
 
     - Keyword `verb`, if positive, specifies to print information every `verb`
-      iterations.  Nothing is printed if `verb ≤ 0`.  By default, `verb = 0`.
+      iterations. Nothing is printed if `verb ≤ 0`. By default, `verb = 0`.
 
     - Optional argument `printer` specifies a function to call to print
-      information every `verb` iterations.  This function is called as:
+      information every `verb` iterations. This function is called as:
 
           printer(output, itr, t, x, phi, r, z, rho)
 
       with `output` the output stream specified by keyword `output`, `itr` the
       iteration number, `t` the elapsed time in seconds, `phi` the reduction of
       the objective function, `r` the residuals, `z` the preconditioned
-      residuals, and `rho` the squared Euclidean norm of `z`.  You can use `z
-      is r` to verify whether a preconditioner is used or not (`z` is different
+      residuals, and `rho` the squared Euclidean norm of `z`. You can use `z is
+      r` to verify whether a preconditioner is used or not (`z` is different
       from `r` if this is the case).
 
     - Keyword `output` specifies the file stream to print information,
       `sys.stdout` by default.
 
     - Keywords `ftol`, `gtol` and `xtol` specify tolerances for deciding the
-      convergence of the algorithm.  In what follows, `x_{k}`,
-      `f_{k}=f(x_{k})`, and `∇f_{k}=∇f(x_{k})` denotes the variables, the
-      objective function and its gradient after `k` iterations ot the algorithm
-      (`x_{0} = x0` the initial estimate).
+      convergence of the algorithm. In what follows, `x_{k}`, `f_{k}=f(x_{k})`,
+      and `∇f_{k}=∇f(x_{k})` denotes the variables, the objective function and
+      its gradient after `k` iterations ot the algorithm (`x_{0} = x0` the
+      initial estimate).
 
       Convergence in the function occurs at iteration `k ≥ 1` if the following
       condition holds:
@@ -195,7 +194,7 @@ def conjgrad(A, b, x=None, *, precond=identity, maxiter=None, restart=None,
 
       where `fatol` and `frtol` are absolute and relative tolerances specified
       by `ftol` which can be `ftol=[fatol,frtol]` or `ftol=frtol` and assume
-      that `fatol=0`.  The default is `ftol=1e-8`.
+      that `fatol=0`. The default is `ftol=1e-8`.
 
       Convergence in the gradient occurs at iteration `k ≥ 0` if the following
       condition holds:
@@ -205,9 +204,9 @@ def conjgrad(A, b, x=None, *, precond=identity, maxiter=None, restart=None,
       where `‖u‖_M = sqrt(u'⋅M⋅u)` is the Mahalanobis norm of `u` with
       precision matrix the preconditioner `M` (which is equal to the usual
       Euclidean norm of `u` if no preconditioner is used or if `M` is the
-      identity).  In this condition, `gatol` and `grtol` are absolute and
+      identity). In this condition, `gatol` and `grtol` are absolute and
       relative gradient tolerances specified by `gtol` which can be
-      `gtol=[gatol,grtol]` or `gtol=grtol` and assume that `gatol=0`.  The
+      `gtol=[gatol,grtol]` or `gtol=grtol` and assume that `gatol=0`. The
       default is `gtol=1e-5`.
 
       Convergence in the variables occurs at iteration `k ≥ 1` if the following
@@ -218,7 +217,7 @@ def conjgrad(A, b, x=None, *, precond=identity, maxiter=None, restart=None,
 
       where `xatol` and `xrtol` are absolute and relative tolerances specified
       by `xtol` which can be `xtol=[fatol,frtol]` or `xtol=xrtol` and assume
-      that `xatol=0`.  The default is `xtol=1e-6`.
+      that `xatol=0`. The default is `xtol=1e-6`.
 
       In the conjugate gradient algorithm, the objective function is always
       reduced at each iteration, but be aware that the gradient and the change
@@ -230,8 +229,8 @@ def conjgrad(A, b, x=None, *, precond=identity, maxiter=None, restart=None,
     The function returns the solution `x` and `status` which indicates the
     reason of the algorithm termination, one of the following codes:
 
-    - `status = NOT_POSITIVE_DEFINITE` if the left-hand-side matrix `A`
-      is found to be not positive definite;
+    - `status = NOT_POSITIVE_DEFINITE` if the left-hand-side matrix `A` is
+      found to be not positive definite;
 
     - `status = TOO_MANY_ITERATIONS` if the maximum number of iterations has
       been reached;
@@ -375,8 +374,8 @@ class LineSearch:
 
         lnsrch = LineSearch(ftol=1e-4, smin=0.2, smax=None)
 
-    creates a new line-search instance.  Optional argument `ftol` can be used to
-    specify the function decrease tolerance.  A step `alpha` is considered as
+    creates a new line-search instance. Optional argument `ftol` can be used to
+    specify the function decrease tolerance. A step `alpha` is considered as
     successful if the following condition (known as Armijo's condition) holds:
 
         f(x0 + alpha*d) ≤ f(x0) + ftol*df(x0)*alpha
@@ -387,25 +386,24 @@ class LineSearch:
     The value of `ftol` must be in the range `(0,0.5]`, the default value is
     `ftol = 1e-4`.
 
-    Optional arguments `smin` and `smax` can be used to specify relative
-    bounds for safeguarding the step length.  When a step `alpha` is
-    unsuccessful, a new backtracking step is computed based on a parabolic
-    interpolation of the objective function along the search direction.  The
-    new step writes:
+    Optional arguments `smin` and `smax` can be used to specify relative bounds
+    for safeguarding the step length. When a step `alpha` is unsuccessful, a
+    new backtracking step is computed based on a parabolic interpolation of the
+    objective function along the search direction. The new step writes:
 
         new_alpha = gamma*alpha
 
-    with `gamma` safeguarded in the range `[smin,smax]`.  The following
-    constraints must hold: `0 < smin ≤ smax < 1`.  Taking `smin = smax = 0.5`
-    emulates the usual Armijo's method.  Default values are `smin = 0.2` and
+    with `gamma` safeguarded in the range `[smin,smax]`. The following
+    constraints must hold: `0 < smin ≤ smax < 1`. Taking `smin = smax = 0.5`
+    emulates the usual Armijo's method. Default values are `smin = 0.2` and
     `smax = 1/(2 - 2*ftol)`.
 
     Note that when Armijo's condition does not hold, the quadratic
-    interpolation yields `gamma < 1/(2 - 2*ftol)`.  Hence, taking an upper
-    bound `smax > 1/(2 - 2*ftol)` has no effects while taking a lower bound
-    `smin ≥ 1/(2 - 2*ftol)` yields a safeguarded `gamma` always equal to
-    `smin`.  Therefore, to benefit from quadratic interpolation, one should
-    choose `smin < smax ≤ 1/(2 - 2*ftol)`.
+    interpolation yields `gamma < 1/(2 - 2*ftol)`. Hence, taking an upper bound
+    `smax > 1/(2 - 2*ftol)` has no effects while taking a lower bound `smin ≥
+    1/(2 - 2*ftol)` yields a safeguarded `gamma` always equal to `smin`.
+    Therefore, to benefit from quadratic interpolation, one should choose `smin
+    < smax ≤ 1/(2 - 2*ftol)`.
 
     A typical usage is:
 
@@ -486,7 +484,7 @@ class LineSearch:
 
         Then, if `lnsrch.converged()` is true, the step length `lnsrch.step()`
         is left unchanged and `x` is the new iterate of the optimization
-        method.  Otherwise, line-search is in progress, the next step to try is
+        method. Otherwise, line-search is in progress, the next step to try is
         `lnsrch.step()`, and `lnsrch.iterate` shall be called with the function
         value at the new iterate.
 
@@ -538,11 +536,11 @@ def steepest_descent_step(x, d, fx, *, f2nd=None, fmin=None,
                                            f2nd, fmin, dxrel, dxabs)
 
     yields the length `alpha` of the first trial step along the steepest
-    descent direction.  Arguments are:
+    descent direction. Arguments are:
 
     - `x` the current variables (or their Euclidean norm).
 
-    - `d` the search direction `d` (or its Euclidean norm) at `x`.  This
+    - `d` the search direction `d` (or its Euclidean norm) at `x`. This
       direction shall be the gradient of the objective function (or the
       projected gradient for a constrained problem) at `x` up to a change of
       sign.
@@ -604,12 +602,12 @@ def steepest_descent_step(x, d, fx, *, f2nd=None, fmin=None,
         if 0 < alpha < Inf:
             return alpha
 
-    if not dxabs is None and 0 < dxabs < Inf
+    if not dxabs is None and 0 < dxabs < Inf:
         # Use absolute norm of initial change of variables.
         if dnorm is None:
             dnorm = norm2(d)
         alpha = dxabs/dnorm
-        if 0 < alpha < Inf
+        if 0 < alpha < Inf:
             return alpha
 
     raise ValueError("invalid settings for steepest descent step length")
@@ -641,12 +639,12 @@ class LBFGS:
         self.reset()
 
     def reset(self):
-        """
-        Reset the L-BFGS model stored in the instance, thus forgetting any
-        memorized information.  This also frees most memory allocated by the
+        """Reset the L-BFGS model stored in the instance, thus forgetting any
+        memorized information. This also frees most memory allocated by the
         instance.
 
         See also: `optm.vmlmb`, `optm.LBFGS`.
+
         """
         m = self.m
         self.mp    = 0 # number of meorized steps
@@ -664,9 +662,9 @@ class LBFGS:
 
             flg = lbfgs.update(s, y)
 
-        updates information stored by L-BFGS instance `lbfgs`.  Arguments `s`
+        updates information stored by L-BFGS instance `lbfgs`. Arguments `s`
         and `y` are the change in the variables and in the gradient of the
-        objective function for the last iterate.  The returned value is a
+        objective function for the last iterate. The returned value is a
         boolean indicating whether `s` and `y` were suitable to update an
         L-BFGS approximation that be positive definite.
 
@@ -704,14 +702,14 @@ class LBFGS:
 
         Optional argument `freevars` is to restrict the L-BFGS approximation to
         the sub-space spanned by the "free variables" not blocked by the
-        constraints.  If specified and not empty, `freevars` shall have the
-        size as `d` and shall be equal to zero where variables are blocked and
-        to one elsewhere.
+        constraints. If specified and not empty, `freevars` shall have the size
+        as `d` and shall be equal to zero where variables are blocked and to
+        one elsewhere.
 
         On return, output variable `scaled` indicates whether any curvature
-        information was taken into account.  If `scaled` is false, it means
-        that the result `d` is identical to `g` except that `d(i)=0` if the
-        `i`-th variable is blocked according to `freevars`.
+        information was taken into account. If `scaled` is false, it means that
+        the result `d` is identical to `g` except that `d(i)=0` if the `i`-th
+        variable is blocked according to `freevars`.
 
         See also: `optm.vmlmb`, `optm.LBFGS`, `optm.inner`.
         """
@@ -796,7 +794,7 @@ class LBFGS:
 
 def clamp(x, xmin, xmax):
     """
-    Restrict `x` to the range `[xmin,xmax]` element-wise.  Undefined bounds,
+    Restrict `x` to the range `[xmin,xmax]` element-wise. Undefined bounds,
     that is `xmin = None` or `xmax = None`, are interpreted as unlimited.
 
     If both bounds are specified, it is the caller's responsibility to ensure
@@ -819,7 +817,7 @@ def unblocked_variables(x, xmin, xmax, g):
     """
     Build a boolean mask of the same shape as `x` and `g` indicating which
     entries in `x` are not blocked by the bounds `xmin` and `xmax` when
-    minimizing an objective function whose gradient is `g` at `x`.  In other
+    minimizing an objective function whose gradient is `g` at `x`. In other
     words, the mask is false everywhere Karush-Kuhn-Tucker (KKT) conditions are
     satisfied.
 
@@ -1026,20 +1024,20 @@ def vmlmb(fg, x0, *, lower=None, upper=None, mem=5, blmvm=False,
         (x, fx, gx, status) = optm.vmlmb(fg, x0, lower=, upper=, mem=, ...)
 
     applies the VMLMB algorithm to minimize a multi-variate differentiable
-    objective function possibly under separable bound constraints.  VMLMB is a
+    objective function possibly under separable bound constraints. VMLMB is a
     quasi-Newton method ("VM" is for "Variable Metric") with low memory
     requirements ("LM" is for "Limited Memory") and which can optionally take
     into account separable bound constraints (the final "B") on the variables.
 
     To determine efficient search directions, VMLMB approximates the Hessian of
     the objective function by a limited memory version of the model assumed in
-    Broyden-Fletcher-Goldfarb-Shanno algorithm (called L-BFGS for short).
-    Hence VMLMB is well suited to solving optimization problems with a very
-    large number of variables possibly with bound constraints.
+    Broyden-Fletcher-Goldfarb-Shanno algorithm (called L-BFGS for short). Hence
+    VMLMB is well suited to solving optimization problems with a very large
+    number of variables possibly with bound constraints.
 
     The method has two required arguments: `fg`, the function to call to
     compute the objective function and its gradient, and `x0`, the initial
-    variables (VMLMB is an iterative method).  The initial variables may be an
+    variables (VMLMB is an iterative method). The initial variables may be an
     array of any dimensions.
 
     Argument `fg` is a callable object which takes the variables as argument
@@ -1059,14 +1057,14 @@ def vmlmb(fg, x0, *, lower=None, upper=None, mem=5, blmvm=False,
     All other settings are specified by keywords:
 
     - Keywords `upper` and `lower` are to specify a lower and/or an upper
-      bounds for the variables.  If unspecified or set to an empty array, a
-      given bound is considered as unlimited.  Bounds must be conformable with
+      bounds for the variables. If unspecified or set to an empty array, a
+      given bound is considered as unlimited. Bounds must be conformable with
       the variables.
 
     - Keyword `mem` specifies the memory used by the algorithm, that is the
       number of previous steps memorized to approximate the Hessian of the
-      objective function.  With `mem=0`, the algorithm behaves as a steepest
-      descent method.  The default is `mem=5`.
+      objective function. With `mem=0`, the algorithm behaves as a steepest
+      descent method. The default is `mem=5`.
 
     - Keywords `ftol`, `gtol` and `xtol` specify tolerances for deciding the
       convergence of the algorithm.
@@ -1078,9 +1076,9 @@ def vmlmb(fg, x0, *, lower=None, upper=None, mem=5, blmvm=False,
           |f - fp| ≤ frtol⋅max(|f|, |fp|)
 
       where `f` and `fp` are the values of the objective function at the
-      current and previous iterates.  In these conditions, `fatol` and `frtol`
+      current and previous iterates. In these conditions, `fatol` and `frtol`
       are absolute and relative tolerances specified by `ftol` which can be
-      `ftol=[fatol,frtol]` or `ftol=frtol` and assume that `fatol=-Inf`.  The
+      `ftol=[fatol,frtol]` or `ftol=frtol` and assume that `fatol=-Inf`. The
       default is `ftol=1e-8`.
 
       Convergence in the gradient occurs if the following condition holds:
@@ -1088,23 +1086,23 @@ def vmlmb(fg, x0, *, lower=None, upper=None, mem=5, blmvm=False,
           ‖g‖ ≤ max(0, gatol, grtol⋅‖g0‖)
 
       where `‖g‖` is the Euclidean norm of the projected gradient, `g0` is the
-      projected gradient at the initial solution.  In this condition, `gatol`
+      projected gradient at the initial solution. In this condition, `gatol`
       and `grtol` are absolute and relative gradient tolerances specified by
       `gtol` which can be `gtol=[gatol,grtol]` or `gtol=grtol` and assume that
-      `gatol=0`.  The default is `gtol=1e-5`.
+      `gatol=0`. The default is `gtol=1e-5`.
 
       Convergence in the variables occurs if the following condition holds:
 
           ‖x - xp‖ ≤ max(0, xatol, xrtol*‖x‖)
 
-      where `x` and `xp` are the current and previous variables.  In this
+      where `x` and `xp` are the current and previous variables. In this
       condition, `xatol` and `xrtol` are absolute and relative tolerances
       specified by `xtol` which can be `xtol=[fatol,frtol]` or `xtol=xrtol` and
-      assume that `xatol=0`.  The default is `xtol=1e-6`.
+      assume that `xatol=0`. The default is `xtol=1e-6`.
 
     - Keywords `maxiter` and `maxeval` are to specify a maximum number of
       algorithm iterations or or evaluations of the objective function
-      implemented by `fg`.  By default, these are unlimited.
+      implemented by `fg`. By default, these are unlimited.
 
     - Keyword `lnsrch` is to specify line-search settings different than the
       default (see `optm.LineSearch`).
@@ -1113,14 +1111,14 @@ def vmlmb(fg, x0, *, lower=None, upper=None, mem=5, blmvm=False,
       step length along the steepest descent (see `optm.steepest_descent_step).
 
     - Keyword `epsilon` specifies a threshold for a sufficient descent
-      condition.  If `epsilon > 0`, then a search direction `d` computed by the
+      condition. If `epsilon > 0`, then a search direction `d` computed by the
       L-BFGS approximation is considered as acceptable if:
 
           ⟨d,g⟩ ≤ -epsilon⋅‖d‖⋅‖g‖
 
       where `g` denotes the projected gradient of the objective function (which
-      is just the gradient in unconstrained case).  Otherwise, the condition
-      writes `⟨d,g⟩ < 0`.  The default is `epsilon = 0` so only the latter
+      is just the gradient in unconstrained case). Otherwise, the condition
+      writes `⟨d,g⟩ < 0`. The default is `epsilon = 0` so only the latter
       condition is checked.
 
     - Keyword `blmvm` (false by default) specifies whether to use BLMVM trick
@@ -1130,10 +1128,10 @@ def vmlmb(fg, x0, *, lower=None, upper=None, mem=5, blmvm=False,
       the algorithm to choose the steepest descent direction more often.
 
     - Keyword `verb`, if positive, specifies to print information every `verb`
-      iterations.  Nothing is printed if `verb ≤ 0`.  By default, `verb = 0`.
+      iterations. Nothing is printed if `verb ≤ 0`. By default, `verb = 0`.
 
     - Keyword `printer` is to specify a user-defined subroutine to print
-      information every `verb` iterations.  This subroutine is called as:
+      information every `verb` iterations. This subroutine is called as:
 
           printer(output, iters, evals, rejects, t, x, f, g, pgnorm,
                   alpha, fg)
@@ -1158,7 +1156,7 @@ def vmlmb(fg, x0, *, lower=None, upper=None, mem=5, blmvm=False,
 
     - Keyword `throwerrors` (true by default), specifies whether to raise an
       exception in case of errors instead or just returning a `status`
-      indicating the problem.  Note that early termination due to limits set on
+      indicating the problem. Note that early termination due to limits set on
       the number of iterations or of evaluations of the objective function are
       not considered as an error.
 
@@ -1168,9 +1166,9 @@ def vmlmb(fg, x0, *, lower=None, upper=None, mem=5, blmvm=False,
 
     # Tolerances.  Most of these are forced to be nonnegative to simplify
     # tests.
-    (fatol, frtol) = get_tolerances(ftol, -Inf)
-    (gatol, grtol) = get_tolerances(gtol, 0.0)
-    (xatol, xrtol) = get_tolerances(xtol, 0.0)
+    (fatol, frtol) = get_tolerances(ftol, atol = -Inf)
+    (gatol, grtol) = get_tolerances(gtol, atol = 0.0)
+    (xatol, xrtol) = get_tolerances(xtol, atol = 0.0)
 
     # Bound constraints.  For faster code, unlimited bounds are preferentially
     # represented by `None`.
@@ -1226,8 +1224,8 @@ def vmlmb(fg, x0, *, lower=None, upper=None, mem=5, blmvm=False,
         if bounded:
             # In principle, we can avoid projecting the variables whenever
             # `alpha ≤ amin` (because the feasible set is convex) but rounding
-            # errors could make this wrong.  It is safer to always project the
-            # variables.  This cost O(n) operations which are probably
+            # errors could make this wrong. It is safer to always project the
+            # variables. This cost O(n) operations which are probably
             # negligible compared to, say, computing the objective function and
             # its gradient.
             x = clamp(x, lower, upper)
@@ -1368,7 +1366,7 @@ def vmlmb(fg, x0, *, lower=None, upper=None, mem=5, blmvm=False,
             if flg == 0:
                 # No exploitable information about the Hessian is available or
                 # the direction computed using the L-BFGS approximation failed
-                # to be a sufficient descent direction.  Take the steepest
+                # to be a sufficient descent direction. Take the steepest
                 # feasible descent direction.
                 if bounded:
                     d = -g*freevars
@@ -1385,10 +1383,9 @@ def vmlmb(fg, x0, *, lower=None, upper=None, mem=5, blmvm=False,
                 # Increment number of rejections if not very first iteration.
                 if iters > 0:
                     ++rejects
-                # Find a suitable step size along the steepest feasible
-                # descent direction `d`.  Note that `pgnorm`, the Euclidean
-                # norm of the (projected) gradient, is also that of `d` in
-                # that case.
+                # Find a suitable step size along the steepest feasible descent
+                # direction `d`. Note that `pgnorm`, the Euclidean norm of the
+                # (projected) gradient, is also that of `d` in that case.
                 alpha = steepest_descent_step(x, pgnorm, f,
                                               f2nd=f2nd, fmin=fmin,
                                               dxrel=dxrel, dxabs=dxabs)
@@ -1416,9 +1413,9 @@ def vmlmb(fg, x0, *, lower=None, upper=None, mem=5, blmvm=False,
         else:
             x = x0 + alpha*d
 
-    # In case of abnormal termination, some progresses may have been made
-    # since the start of the line-search.  In that case, we restore the best
-    # solution so far.
+    # In case of abnormal termination, some progresses may have been made since
+    # the start of the line-search. In that case, we restore the best solution
+    # so far.
     if best_f < f:
         f = best_f
         g = best_g
@@ -1457,12 +1454,12 @@ def vmlmb(fg, x0, *, lower=None, upper=None, mem=5, blmvm=False,
 # VECTORIZED OPERATIONS
 
 def inner(x, y):
-    """
-    Compute the inner product of `x` and `y` regardless of their shapes
-    (their number of elements must however match).  Complex valued arrays
-    are not (yet) supported.
+    """Compute the inner product of `x` and `y` regardless of their shapes (their
+    number of elements must however match). Complex valued arrays are not (yet)
+    supported.
 
     See also: `optm.norm2`.
+
     """
     return _np.vdot(x, y)
 
@@ -1552,17 +1549,17 @@ def elapsed_time(t0=0.0):
     return time.clock_gettime(time.CLOCK_MONOTONIC) - t0
 
 def tolerance(x, atol, rtol):
-    """
-    Given absolute and relative tolerances `atol` and `rtol`, this function
+    """Given absolute and relative tolerances `atol` and `rtol`, this function
     yields:
 
          max(0, atol, rtol*abs(x))    # if `x` is a scalar
          max(0, atol, rtol*norm(x))   # if `x` is an array
 
     where `norm(x)` is the Euclidean norm of `x` as computed by `optm.norm2`
-    (which to see).  If `rtol ≤ 0`, the computation of `norm(x)` is avoided.
+    (which to see). If `rtol ≤ 0`, the computation of `norm(x)` is avoided.
 
     See also: `optm.norm2`, `optm.get_tolerances`.
+
     """
     tol = max(0.0, atol)
     if rtol <= 0.0:
@@ -1574,10 +1571,10 @@ def get_tolerances(tol, /, *, atol=0.0):
     """Get absolute and relative tolerances.
 
     This function yields a 2-tuple `(atol, rtol)` of absolute and relative
-    tolerances given tolerance `tol` and default absolute tolerance `atol`.  If
+    tolerances given tolerance `tol` and default absolute tolerance `atol`. If
     `tol` is a scalar, it is assumed that `atol` and `tol` are the absolute and
-    relative tolerances.  Otherwise, `tol` must specify the absolute and
-    relative tolerances as a 2-tuple (or an array of 2 elements).  The relative
+    relative tolerances. Otherwise, `tol` must specify the absolute and
+    relative tolerances as a 2-tuple (or an array of 2 elements). The relative
     tolerance `rtol` is always nonnegative.
 
     See also: `optm.tolerance`.
