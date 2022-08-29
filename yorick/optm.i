@@ -1,11 +1,12 @@
 // optm.i -
 //
-// Pure Yorick implementations of the linear conjugate gradients (for solving
-// uncontrained linear optimization problems) and VMLMB (for solving non-linear
-// of bound constrained optimization problems).  VMLMB is a quasi-Newton method
-// ("VM" is for "Variable Metric") with low memory requirements ("LM" is for
-// "Limited Memory") and which can optionally take into account separable bound
-// constraints (the final "B") on the variables.
+// Pure Yorick implementations of the VMLMB algorithm (for solving non-linear
+// bound constrained optimization problems) and of the linear conjugate
+// gradient method (for solving unconstrained linear optimization problems).
+// VMLMB is a quasi-Newton method ("VM" is for "Variable Metric") with low
+// memory requirements ("LM" is for "Limited Memory") and which can optionally
+// take into account separable bound constraints (the final "B") on the
+// variables.
 //
 //-----------------------------------------------------------------------------
 //
@@ -58,72 +59,72 @@ func optm_conjgrad(A, b, x0, &status, precond=, maxiter=, restart=, verb=,
                    printer=, output=, ftol=, gtol=, xtol=)
 /* DOCUMENT x = optm_conjgrad(A, b, [x0, status]);
 
-     Run the (preconditioned) linear conjugate gradient algorithm to solve
-     the system of equations `A⋅x = b` in `x`.
+     Run the (preconditioned) linear conjugate gradient algorithm to solve the
+     system of equations `A⋅x = b` in `x`.
 
      Argument `A` implements the left-hand-side (LHS) "matrix" of the
-     equations.  It is called as `A(x)` to compute the result of `A⋅x`.
-     Note that, as `A` and the preconditioner `M` must be symmetric, it
-     may be faster to apply their adjoint.
+     equations. It is called as `A(x)` to compute the result of `A⋅x`. Note
+     that, as `A` and the preconditioner `M` must be symmetric, it may be
+     faster to apply their adjoint.
 
      Argument `b` is the right-hand-side (RHS) "vector" of the equations.
 
-     Optional argument `x0` provides the initial solution.  If `x0` is
+     Optional argument `x0` provides the initial solution. If `x0` is
      unspecified, `x` is initially an array of zeros.
 
-     Provided `A` be positive definite, the solution `x` of the equations
-     `A⋅x  = b` is unique and is also the minimum of the following convex
-     quadratic objective function:
+     Provided `A` be positive definite, the solution `x` of the equations `A⋅x
+     = b` is unique and is also the minimum of the following convex quadratic
+     objective function:
 
          f(x) = (1/2)⋅x'⋅A⋅x - b'⋅x + ϵ
 
-     where `ϵ` is an arbitrary constant.  The gradient of this objective
+     where `ϵ` is an arbitrary constant. The gradient of this objective
      function is:
 
          ∇f(x) = A⋅x - b
 
-     hence solving `A⋅x = b` for `x` yields the minimum of `f(x)`.  The
+     hence solving `A⋅x = b` for `x` yields the minimum of `f(x)`. The
      variations of `f(x)` between successive iterations, the norm of the
-     gradient `∇f(x)` or the norm of the variation of variables `x` may be
-     used to decide the convergence of the algorithm (see keywords `ftol`,
-     `gtol` and `xtol`).
+     gradient `∇f(x)` or the norm of the variation of variables `x` may be used
+     to decide the convergence of the algorithm (see keywords `ftol`, `gtol`
+     and `xtol`).
 
      Algorithm parameters can be specified by the following keywords:
 
-     - Keyword `precond` is to specify a preconditioner `M`.  It may be a
-       function name or handle and is called as `M(x)` to compute the result
-       of `M⋅x`.  By default, the un-preconditioned version of the algorithm
-       is run.
+     - Keyword `precond` is to specify a preconditioner `M`. It may be a
+       function name or handle and is called as `M(x)` to compute the result of
+       `M⋅x`. By default, the un-preconditioned version of the algorithm is
+       run.
 
      - Keyword `maxiter` is to specify the maximum number of iterations to
        perform which is `2⋅numberof(b) + 1` by default.
 
      - Keyword `restart` is to specify the number of consecutive iterations
-       before restarting the conjugate gradient recurrence.  Restarting the
-       algorithm is to cope with the accumulation of rounding errors.  By
-       default, `restart = min(50,numberof(b)+1)`.  Set `restart` to a value
+       before restarting the conjugate gradient recurrence. Restarting the
+       algorithm is to cope with the accumulation of rounding errors. By
+       default, `restart = min(50,numberof(b)+1)`. Set `restart` to a value
        less or equal zero or greater than `maxiter` if you do not want that any
        restarts ever occur.
 
      - Keyword `verb`, if positive, specifies to print information every `verb`
-       iterations.  Nothing is printed if `verb ≤ 0`.  By default, `verb = 0`.
+       iterations. Nothing is printed if `verb ≤ 0`. By default, `verb = 0`.
 
      - Optional argument `printer` specifies a function to call to print
-       information every `verb` iterations.  This function is called as:
+       information every `verb` iterations. This function is called as:
 
            printer(output, itr, t, x, phi, r, z, rho)
 
        with `output` the output stream specified by keyword `output`, `itr` the
        iteration number, `t` the elapsed time in seconds, `phi` the reduction
        of the objective function, `r` the residuals, `z` the preconditioned
-       residuals, and `rho` the squared Euclidean norm of `z`.  You can use `z
+       residuals, and `rho` the squared Euclidean norm of `z`. You can use `z
        is r` to verify whether a preconditioner is used or not (`z` is
        different from `r` if this is the case).
 
      - Keyword `output` specifies the file stream to print information.
 
      - Keywords `ftol`, `gtol` and `xtol` specify tolerances for deciding the
-       convergence of the algorithm.  In what follows, `x_{k}`,
+       convergence of the algorithm. In what follows, `x_{k}`,
        `f_{k}=f(x_{k})`, and `∇f_{k}=∇f(x_{k})` denotes the variables, the
        objective function and its gradient after `k` iterations ot the
        algorithm (`x_{0} = x0` the initial estimate).
@@ -135,7 +136,7 @@ func optm_conjgrad(A, b, x0, &status, precond=, maxiter=, restart=, verb=,
 
        where `fatol` and `frtol` are absolute and relative tolerances specified
        by `ftol` which can be `ftol=[fatol,frtol]` or `ftol=frtol` and assume
-       that `fatol=0`.  The default is `ftol=1e-8`.
+       that `fatol=0`. The default is `ftol=1e-8`.
 
        Convergence in the gradient occurs at iteration `k ≥ 0` if the following
        condition holds:
@@ -145,9 +146,9 @@ func optm_conjgrad(A, b, x0, &status, precond=, maxiter=, restart=, verb=,
        where `‖u‖_M = sqrt(u'⋅M⋅u)` is the Mahalanobis norm of `u` with
        precision matrix the preconditioner `M` (which is equal to the usual
        Euclidean norm of `u` if no preconditioner is used or if `M` is the
-       identity).  In this condition, `gatol` and `grtol` are absolute and
+       identity). In this condition, `gatol` and `grtol` are absolute and
        relative gradient tolerances specified by `gtol` which can be
-       `gtol=[gatol,grtol]` or `gtol=grtol` and assume that `gatol=0`.  The
+       `gtol=[gatol,grtol]` or `gtol=grtol` and assume that `gatol=0`. The
        default is `gtol=1e-5`.
 
        Convergence in the variables occurs at iteration `k ≥ 1` if the
@@ -157,7 +158,7 @@ func optm_conjgrad(A, b, x0, &status, precond=, maxiter=, restart=, verb=,
 
        where `xatol` and `xrtol` are absolute and relative tolerances specified
        by `xtol` which can be `xtol=[fatol,frtol]` or `xtol=xrtol` and assume
-       that `xatol=0`.  The default is `xtol=1e-6`.
+       that `xatol=0`. The default is `xtol=1e-6`.
 
        In the conjugate gradient algorithm, the objective function is always
        reduced at each iteration, but be aware that the gradient and the change
@@ -265,7 +266,7 @@ func optm_conjgrad(A, b, x0, &status, precond=, maxiter=, restart=, verb=,
         rho = optm_inner(r, z); // rho = ‖r‖_M^2
         if (k == 0) {
             // Pre-compute the minimal Mahalanobis norm of the gradient for
-            // convergence.  The Mahalanobis norm of the gradient is equal to
+            // convergence. The Mahalanobis norm of the gradient is equal to
             // `sqrt(rho)`.
             gtest = max(0.0, gatol, grtol*sqrt(rho));
         }
@@ -337,7 +338,7 @@ func optm_conjgrad_printer(output, itr, t, x, phi, r, z, rho)
 /* DOCUMENT optm_conjgrad_printer, output, itr, t, x, phi, r, z, rho;
      Default printer function for `optm_conjgrad`.
 
-   SEE ALSO:optm_conjgrad.
+   SEE ALSO: optm_conjgrad.
  */
 {
     if (preconditioned) {
@@ -382,10 +383,10 @@ local optm_iterate_line_search;
 
      The function `optm_new_line_search` creates a new line-search instance.
      Optional argument `tmpl` is another line-search instance to use as a
-     template to define default values for the line-search parameters.  All
+     template to define default values for the line-search parameters. All
      parameters are specified by keyword.
 
-     Keyword `ftol` can be used to specify the function decrease tolerance.  A
+     Keyword `ftol` can be used to specify the function decrease tolerance. A
      step `alpha` is considered as successful if the following condition (known
      as Armijo's condition) holds:
 
@@ -394,19 +395,19 @@ local optm_iterate_line_search;
      where `f(x)` is the objective function at `x`, `x0` denotes the variables
      at the start of the line-search, `d` is the search direction, and `df(x0)
      = d'⋅∇f(x0)` is the directional derivative of the objective function at
-     `x0`.  The value of `ftol` must be in the range `(0,0.5]`, the default
+     `x0`. The value of `ftol` must be in the range `(0,0.5]`, the default
      value is `ftol = 1E-4`.
 
      Keywords `smin` and `smax` can be used to specify relative bounds for
-     safeguarding the step length.  When a step `alpha` is unsuccessful, a new
+     safeguarding the step length. When a step `alpha` is unsuccessful, a new
      backtracking step is computed based on a parabolic interpolation of the
-     objective function along the search direction.  The new step writes:
+     objective function along the search direction. The new step writes:
 
          new_alpha = gamma*alpha
 
-     with `gamma` safeguarded in the range `[smin,smax]`.  The following
-     constraints must hold: `0 < smin ≤ smax < 1`.  Taking `smin = smax = 0.5`
-     emulates the usual Armijo's method.  Default values are `smin = 0.2` and
+     with `gamma` safeguarded in the range `[smin,smax]`. The following
+     constraints must hold: `0 < smin ≤ smax < 1`. Taking `smin = smax = 0.5`
+     emulates the usual Armijo's method. Default values are `smin = 0.2` and
      `smax = 1/(2 - 2*ftol)`.
 
      The subroutine `optm_start_line_search` shall be called to initialize each
@@ -416,10 +417,10 @@ local optm_iterate_line_search;
      `x0` and `stp > 0` a guess for the first step to try.
 
      Note that when Armijo's condition does not hold, the quadratic
-     interpolation yields `gamma < 1/(2 - 2*ftol)`.  Hence, taking an upper
+     interpolation yields `gamma < 1/(2 - 2*ftol)`. Hence, taking an upper
      bound `smax > 1/(2 - 2*ftol)` has no effects while taking a lower bound
      `smin ≥ 1/(2 - 2*ftol)` yields a safeguarded `gamma` always equal to
-     `smin`.  Therefore, to benefit from quadratic interpolation, one should
+     `smin`. Therefore, to benefit from quadratic interpolation, one should
      choose `smin < smax ≤ 1/(2 - 2*ftol)`.
 
      The subroutine `optm_iterate_line_search` shall be called to pursue the
@@ -428,18 +429,18 @@ local optm_iterate_line_search;
      current position on the line-search.
 
      These two subroutines updates the line-search instance in-place hence
-     `lnsrch` must be a simple variable, not an expression.  On return of one
-     of these subroutines, `lnsrch.stage` is normally one of:
+     `lnsrch` must be a simple variable, not an expression. On return of one of
+     these subroutines, `lnsrch.stage` is normally one of:
 
-     1: Line-search in progress.  The next step to try is `lnsrch.step`,
+     1: Line-search in progress. The next step to try is `lnsrch.step`,
         `optm_iterate_line_search` shall be called with the new function value
         at `x0 + lnsrch.step*d`.
 
-     2: Line-search has converged.  The step length `lnsrch.step` is left
+     2: Line-search has converged. The step length `lnsrch.step` is left
         unchanged and `x0 + lnsrch.step*d` is the new iterate of the
         optimization method.
 
-     Upon creation of the line-search instance, `lnsrch.stage` is set to 0.  A
+     Upon creation of the line-search instance, `lnsrch.stage` is set to 0. A
      negative value for `lnsrch.stage` may be used to indicate an error.
 
      A typical usage is:
@@ -465,7 +466,7 @@ local optm_iterate_line_search;
              }
          }
 
-   SEE ALSO:
+   SEE ALSO: optm_vmlmb.
  */
 func optm_new_line_search(lnsrch, ftol=, smin=, smax=)
 {
@@ -542,11 +543,11 @@ func optm_steepest_descent_step(x, d, fx, f2nd, fmin, dxrel, dxabs)
                                                f2nd, fmin, dxrel, dxabs);
 
      Determine the length `alpha` of the first trial step along the steepest
-     descent direction.  The leading arguments are:
+     descent direction. The leading arguments are:
 
      - `x` the current variables (or their Euclidean norm).
 
-     - `d` the search direction `d` (or its Euclidean norm) at `x`.  This
+     - `d` the search direction `d` (or its Euclidean norm) at `x`. This
        direction shall be the gradient (or the projected gradient for a
        constrained problem) at `x` up to a change of sign.
 
@@ -685,8 +686,8 @@ func optm_reset_lbfgs(&lbfgs)
 func optm_update_lbfgs(lbfgs, s, y)
 /* DOCUMENT flg = optm_update_lbfgs(lbfgs, s, y);
 
-     Update information stored by L-BFGS instance `lbfgs`.  Arguments `s` and
-     `y` are the change in variables and gradient for the last iterate.  The
+     Update information stored by L-BFGS instance `lbfgs`. Arguments `s` and
+     `y` are the change in variables and gradient for the last iterate. The
      returned value is a boolean indicating whether `s` and `y` were suitable
      to update an L-BFGS approximation that be positive definite.
 
@@ -722,12 +723,12 @@ func optm_apply_lbfgs(lbfgs, d, &scaled, freevars)
 
      Optional argument `freevars` is to restrict the L-BFGS approximation to
      the sub-space spanned by the "free variables" not blocked by the
-     constraints.  If specified and not empty, `freevars` shall have the size
-     as `d` and shall be equal to zero where variables are blocked and to one
+     constraints. If specified and not empty, `freevars` shall have the size as
+     `d` and shall be equal to zero where variables are blocked and to one
      elsewhere.
 
      On return, output variable `scaled` indicates whether any curvature
-     information was taken into account.  If `scaled` is false, it means that
+     information was taken into account. If `scaled` is false, it means that
      the result `d` is identical to `g` except that `d(i)=0` if the `i`-th
      variable is blocked according to `freevars`.
 
@@ -827,7 +828,7 @@ func optm_apply_lbfgs(lbfgs, d, &scaled, freevars)
 func optm_clamp(x, xmin, xmax)
 /* DOCUMENT xp = optm_clamp(x, xmin, xmax);
 
-     Restrict `x` to the range `[xmin,xmax]` element-wise.  Empty bounds, that
+     Restrict `x` to the range `[xmin,xmax]` element-wise. Empty bounds, that
      is `xmin = []` or `xmax = []`, are interpreted as unlimited.
 
      If both bounds are specified, it is the caller's responsibility to ensure
@@ -850,7 +851,7 @@ func optm_unblocked_variables(x, xmin, xmax, g)
 
      Build a logical mask `msk` of the same size as `x` indicating which
      entries in `x` are not blocked by the bounds `xmin` and `xmax` when
-     minimizing an objective function whose gradient is `g` at `x`.  In other
+     minimizing an objective function whose gradient is `g` at `x`. In other
      words, the mask is false everywhere K.K.T. conditions are satisfied.
 
      Empty bounds, that is `xmin = []` or `xmax = []`, are interpreted as
@@ -907,8 +908,8 @@ func optm_line_search_limits(&amin, &amax, x0, xmin, xmax, pm, d)
          proj(x0 ± alpha*d) = proj(x0 ± amax*d)
 
      In other words, no bounds are overcome if `0 ≤ alpha ≤ amin` and the
-     projected variables are all the same for any `alpha` such that
-     `alpha ≥ amax ≥ 0`.
+     projected variables are all the same for any `alpha` such that `alpha ≥
+     amax ≥ 0`.
 
      Restrictions: `x0` must be feasible and must have the same size as `d`;
      this is not verified for efficiency reasons.
@@ -1084,7 +1085,7 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, blmvm=, lnsrch=,
 /* DOCUMENT x = optm_vmlmb(fg, x0, [f, g, status,] lower=, upper=, mem=);
 
      Apply VMLMB algorithm to minimize a multi-variate differentiable objective
-     function possibly under separable bound constraints.  VMLMB is a
+     function possibly under separable bound constraints. VMLMB is a
      quasi-Newton method ("VM" is for "Variable Metric") with low memory
      requirements ("LM" is for "Limited Memory") and which can optionally take
      into account separable bound constraints (the final "B") on the variables.
@@ -1097,7 +1098,7 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, blmvm=, lnsrch=,
 
      The method has two required arguments: `fg`, the function to call to
      compute the objective function and its gradient, and `x0`, the initial
-     variables (VMLMB is an iterative method).  The initial variables may be an
+     variables (VMLMB is an iterative method). The initial variables may be an
      array of any dimensions.
 
      The method returns `x` the best solution found during iterations.
@@ -1123,14 +1124,14 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, blmvm=, lnsrch=,
      All other settings are specified by keywords:
 
      - Keywords `upper` and `lower` are to specify a lower and/or an upper
-       bounds for the variables.  If unspecified or set to an empty array, a
-       given bound is considered as unlimited.  Bounds must be conformable with
+       bounds for the variables. If unspecified or set to an empty array, a
+       given bound is considered as unlimited. Bounds must be conformable with
        the variables.
 
      - Keyword `mem` specifies the memory used by the algorithm, that is the
        number of previous steps memorized to approximate the Hessian of the
-       objective function.  With `mem=0`, the algorithm behaves as a steepest
-       descent method.  The default is `mem=5`.
+       objective function. With `mem=0`, the algorithm behaves as a steepest
+       descent method. The default is `mem=5`.
 
      - Keywords `ftol`, `gtol` and `xtol` specify tolerances for deciding the
        convergence of the algorithm.
@@ -1142,9 +1143,9 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, blmvm=, lnsrch=,
            |f - fp| ≤ frtol⋅max(|f|, |fp|)
 
        where `f` and `fp` are the values of the objective function at the
-       current and previous iterates.  In these conditions, `fatol` and `frtol`
+       current and previous iterates. In these conditions, `fatol` and `frtol`
        are absolute and relative tolerances specified by `ftol` which can be
-       `ftol=[fatol,frtol]` or `ftol=frtol` and assume that `fatol=-Inf`.  The
+       `ftol=[fatol,frtol]` or `ftol=frtol` and assume that `fatol=-Inf`. The
        default is `ftol=1e-8`.
 
        Convergence in the gradient occurs if the following condition holds:
@@ -1152,23 +1153,23 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, blmvm=, lnsrch=,
            ‖g‖ ≤ max(0, gatol, grtol⋅‖g0‖)
 
        where `‖g‖` is the Euclidean norm of the projected gradient, `g0` is the
-       projected gradient at the initial solution.  In this condition, `gatol`
+       projected gradient at the initial solution. In this condition, `gatol`
        and `grtol` are absolute and relative gradient tolerances specified by
        `gtol` which can be `gtol=[gatol,grtol]` or `gtol=grtol` and assume that
-       `gatol=0`.  The default is `gtol=1e-5`.
+       `gatol=0`. The default is `gtol=1e-5`.
 
        Convergence in the variables occurs if the following condition holds:
 
            ‖x - xp‖ ≤ max(0, xatol, xrtol*‖x‖)
 
-       where `x` and `xp` are the current and previous variables.  In this
+       where `x` and `xp` are the current and previous variables. In this
        condition, `xatol` and `xrtol` are absolute and relative tolerances
        specified by `xtol` which can be `xtol=[fatol,frtol]` or `xtol=xrtol`
-       and assume that `xatol=0`.  The default is `xtol=1e-6`.
+       and assume that `xatol=0`. The default is `xtol=1e-6`.
 
      - Keywords `maxiter` and `maxeval` are to specify a maximum number of
        algorithm iterations or or evaluations of the objective function
-       implemented by `fg`.  By default, these are unlimited.
+       implemented by `fg`. By default, these are unlimited.
 
      - Keyword `lnsrch` is to specify line-search settings different than the
        default (see `optm_new_line_search`).
@@ -1178,14 +1179,14 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, blmvm=, lnsrch=,
        `optm_steepest_descent_step).
 
      - Keyword `epsilon` specifies a threshold for a sufficient descent
-       condition.  If `epsilon > 0`, then a search direction `d` computed by
-       the L-BFGS approximation is considered as acceptable if:
+       condition. If `epsilon > 0`, then a search direction `d` computed by the
+       L-BFGS approximation is considered as acceptable if:
 
            ⟨d,g⟩ ≤ -epsilon⋅‖d‖⋅‖g‖
 
        where `g` denotes the projected gradient of the objective function
-       (which is just the gradient in unconstrained case).  Otherwise, the
-       condition writes `⟨d,g⟩ < 0`.  The default is `epsilon = 0` so only the
+       (which is just the gradient in unconstrained case). Otherwise, the
+       condition writes `⟨d,g⟩ < 0`. The default is `epsilon = 0` so only the
        latter condition is checked.
 
      - Keyword `blmvm` (false by default) specifies whether to use BLMVM trick
@@ -1196,13 +1197,12 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, blmvm=, lnsrch=,
        often.
 
      - Keyword `verb`, if positive, specifies to print information every `verb`
-       iterations.  Nothing is printed if `verb ≤ 0`.  By default, `verb = 0`.
+       iterations. Nothing is printed if `verb ≤ 0`. By default, `verb = 0`.
 
      - Keyword `printer` is to specify a user-defined subroutine to print
-       information every `verb` iterations.  This subroutine is called as:
+       information every `verb` iterations. This subroutine is called as:
 
-           printer, output, iters, evals, rejects, t, x, f, g, pgnorm,
-               alpha, fg;
+           printer, output, iters, evals, rejects, t, x, f, g, pgnorm, alpha, fg;
 
        with `output` the output stream specified by keyword `output`, `iters`
        the number of algorithm iterations, `evals` the number of calls to `fg`,
@@ -1227,7 +1227,7 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, blmvm=, lnsrch=,
 
      - Keyword `throwerrors` (true by default), specifies whether to call
        `error` in case of errors instead or returning a `status` indicating the
-       problem.  Note that early termination due to limits set on the number of
+       problem. Note that early termination due to limits set on the number of
        iterations or of evaluations of the objective function are not
        considered as an error.
  */
@@ -1319,8 +1319,8 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, blmvm=, lnsrch=,
         if (bounded) {
             // In principle, we can avoid projecting the variables whenever
             // `alpha ≤ amin` (because the feasible set is convex) but rounding
-            // errors could make this wrong.  It is safer to always project the
-            // variables.  This cost O(n) operations which are probably
+            // errors could make this wrong. It is safer to always project the
+            // variables. This cost O(n) operations which are probably
             // negligible compared to, say, computing the objective function
             // and its gradient.
             x = optm_clamp(unref(x), lower, upper);
@@ -1475,7 +1475,7 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, blmvm=, lnsrch=,
             if (dir == 0) {
                 // No exploitable information about the Hessian is available or
                 // the direction computed using the L-BFGS approximation failed
-                // to be a sufficient descent direction.  Take the steepest
+                // to be a sufficient descent direction. Take the steepest
                 // feasible descent direction.
                 d = -(bounded ? g*freevars : g);
                 dg = -pgnorm^2;
@@ -1490,7 +1490,7 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, blmvm=, lnsrch=,
                 alpha = 1.0;
             } else {
                 // Find a suitable step size along the steepest feasible
-                // descent direction `d`.  Note that `pgnorm`, the Euclidean
+                // descent direction `d`. Note that `pgnorm`, the Euclidean
                 // norm of the (projected) gradient, is also that of `d` in
                 // that case.
                 alpha = optm_steepest_descent_step(x, pgnorm, f, f2nd,
@@ -1524,7 +1524,7 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, blmvm=, lnsrch=,
     }
 
     // In case of abnormal termination, some progresses may have been made
-    // since the start of the line-search.  In that case, we restore the best
+    // since the start of the line-search. In that case, we restore the best
     // solution so far.
     if (best_f < f) {
         f = best_f;
@@ -1641,7 +1641,7 @@ func _optm_scale(&x, alpha)
          or optm_scale, x, alpha;
 
      Compute `alpha*x` efficiently and taking care of preserving the
-     floating-point type of `x`.  Argument `x` is overwritten with the result
+     floating-point type of `x`. Argument `x` is overwritten with the result
      when `optm_scale` is called as a subroutine.
  */
 {
@@ -1673,8 +1673,8 @@ func optm_tolerance(x, atol, rtol)
          max(0, atol, rtol*abs(x))    // if `x` is a scalar
          max(0, atol, rtol*norm(x))   // if `x` is an array
 
-     where norm(X) is the Euclidean norm of `x` as computed by optm_norm2
-     (which to see).  If `rtol ≤ 0`, the computation of norm(X) is avoided.
+     where `norm(x)` is the Euclidean norm of `x` as computed by optm_norm2
+     (which to see). If `rtol ≤ 0`, the computation of `norm(x)` is avoided.
 
    SEE ALSO: `optm_norm2`, `optm_get_tolerances`.
  */
