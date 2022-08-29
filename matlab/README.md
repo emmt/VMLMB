@@ -1,19 +1,21 @@
 # VMLMB for Matlab / GNU Octave
 
-This directory contains the code of a [Matlab](https://www.mathworks.com) /
-[GNU Octave](https://www.gnu.org/software/octave) implementation of `VMLMB` and
+This directory contains the code of [Matlab](https://www.mathworks.com) / [GNU
+Octave](https://www.gnu.org/software/octave) implementations of the `VMLMB`
+algorithm (for solving non-linear bound constrained optimization problems) and
 of the linear conjugate gradient method (for unconstrained linear problems).
+
 
 ## VMLMB: a quasi-Newton method with bound constraints
 
 `VMLMB` is an algorithm to minimize a multi-variate differentiable objective
-function possibly under separable bound constraints.  `VMLMB` is a quasi-Newton
-method ("VM" is for "Variable Metric") with low memory requirements ("LM" is
-for "Limited Memory") and which can optionally take into account separable
-bound constraints (the final "B") on the variables.  To determine efficient
+function possibly under separable bound constraints. `VMLMB` is a quasi-Newton
+method (`VM` is for *Variable Metric*) with low memory requirements (`LM` is
+for *Limited Memory*) and which can optionally take into account separable
+bound constraints (the final "`B`) on the variables. To determine efficient
 search directions, `VMLMB` approximates the Hessian of the objective function
 by a limited memory version of the Broyden-Fletcher-Goldfarb-Shanno model
-(L-BFGS for short).  Hence `VMLMB` is well suited to solving optimization
+(L-BFGS for short). Hence `VMLMB` is well suited to solving optimization
 problems with a very large number of variables possibly with bound constraints.
 
 To run the `VMLMB` algorithm, call [`optm_vmlmb`](./src/optm_vmlmb.m) as
@@ -38,8 +40,8 @@ function [fx, gx] = fg(x)
 end
 ```
 
-Options of the algorithm are specified as name-value pairs.  For instance, `'lower'` and
-`'upper'` may be used to impose bounds on the variables:
+Options of the algorithm are specified as name-value pairs. For instance,
+`'lower'` and `'upper'` may be used to impose bounds on the variables:
 
 ```Matlab
 [x, fx, gx, status] = optm_vmlmb(@fg, x0, 'lower', xmin, 'upper', xmax, ...);
@@ -82,10 +84,10 @@ This system of equations can be iteratively solved by means of the
 which yields an approximate solution `x` and an integer, `status` indicating
 the reason of the algorithm termination (call
 [`optm_reason(status)`](./src/optm_reason.m) for a textual description).
-Argument `x0` specifies the initial solution.  If `x0` is an empty array, i.e.
+Argument `x0` specifies the initial solution. If `x0` is an empty array, i.e.
 `[]`, `x` is initially an array of zeros. Argument `A` implements the
 *left-hand-side (LHS) matrix* of the equations. It may be a function name or
-handle and is called as `A(x)` to compute the result of `A*x`.  Argument `b` is
+handle and is called as `A(x)` to compute the result of `A*x`. Argument `b` is
 the *right-hand-side (RHS) vector* of the equations.
 
 Note that, as `A` and the preconditioner `M` must be symmetric, it may be
@@ -101,14 +103,14 @@ method.
 ## Installation
 
 To use this software, it is sufficient to add directory
-[`./matlab/src`](./matlab/src) to your path (see `addpath` function).  All
+[`./matlab/src`](./matlab/src) to your path (see `addpath` function). All
 *public* functions are prefixed by `optm_` to avoid name collisions.
 
 
 ## Speed-up
 
 Depending on your version of Matlab / GNU Octave, some low level functions may
-have to be modified to accelerate the code.  This can be simply done by
+have to be modified to accelerate the code. This can be simply done by
 uncommenting the fastest expression (and commenting the others) in the
 following source files:
 
@@ -118,11 +120,11 @@ following source files:
 - [`src/optm_norm1.m`](./src/optm_norm1.m) used to compute the L1 norm of
   variables;
 
-- [`src/optm_norm2.m`](./src/optm_norm2.m) used to compute the Euclidean norm of
-  variables;
+- [`src/optm_norm2.m`](./src/optm_norm2.m) used to compute the Euclidean norm
+  of variables;
 
-- [`src/optm_norminf.m`](./src/optm_norminf.m) used to compute the infinite norm
-  of variables.
+- [`src/optm_norminf.m`](./src/optm_norminf.m) used to compute the infinite
+  norm of variables.
 
 
 ## References
