@@ -1323,13 +1323,14 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, blmvm=, lnsrch=,
     last_obsrv = -1; // iteration number for last call to observer
     freevars = [];   // subset of free variables (not yet known)
     lbfgs = optm_new_lbfgs(mem);
-    if (verb > 0) {
+    call_observer = !is_void(observer);
+    call_timer = (verb > 0 || call_observer);
+    if (call_timer) {
         time_index = (cputime ? 1 : 3);
         elapsed = array(double, 3);
         timer, elapsed;
         t0 = elapsed(time_index);
     }
-    call_observer = !is_void(observer);
 
     // Algorithm stage follows that of the line-search, it is one of:
     // 0 = initially;
@@ -1434,8 +1435,10 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, blmvm=, lnsrch=,
         }
         if (stage != 1) {
             // Call user defined observer.
-            timer, elapsed;
-            t = elapsed(time_index) - t0;
+            if (call_timer) {
+                timer, elapsed;
+                t = elapsed(time_index) - t0;
+            }
             if (call_observer) {
                 observer, iters, evals, rejects, t, x, f, g, pgnorm, alpha, fg;
                 last_obsrv = iters;
@@ -1574,8 +1577,10 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, blmvm=, lnsrch=,
             }
         }
     }
-    timer, elapsed;
-    t = elapsed(time_index) - t0;
+    if (call_timer) {
+        timer, elapsed;
+        t = elapsed(time_index) - t0;
+    }
     if (call_observer && iters > last_obsrv) {
         observer, iters, evals, rejects, t, x, f, g, pgnorm, alpha, fg;
     }
