@@ -453,10 +453,11 @@ class LineSearch:
 
             lnsrch.start(fx, f0, df0, stp)
 
-        starts a new line-search for line-search instance `lnsrch` with `f0`
+        starts a new search for line-search instance `lnsrch` with `f0 = f(x0)`
         the objective function at `x0` the variables at the start of the
-        line-search, `df0` the directional derivative of the objective function
-        at `x0`; and `stp > 0` a guess for the first step to try.
+        line-search, `df0 = ⟨d,∇f(x0)⟩` the directional derivative of the
+        objective function at `x0`; and `stp > 0` a guess for the first step to
+        try.
 
         See also: `optm.LineSearch`, `optm.LineSearch.iterate`.
 
@@ -475,8 +476,8 @@ class LineSearch:
 
             lnsrch.iterate(fx)
 
-        pursues the line-search started for line-search instance `lnsrch`.
-        Argument `fx = f(x)` is the objective function at
+        pursues the search started for line-search instance `lnsrch` with `fx =
+        f(x)` the objective function at:
 
             x = x0 + lnsrch.step()*d
 

@@ -410,18 +410,18 @@ local optm_iterate_line_search;
      emulates the usual Armijo's method. Default values are `smin = 0.2` and
      `smax = 1/(2 - 2*ftol)`.
 
-     The subroutine `optm_start_line_search` shall be called to initialize each
-     new line-search with arguments: `lnsrch` the line-search instance, `f0`
-     the objective function at `x0` the variables at the start of the
-     line-search, `df0` the directional derivative of the objective function at
-     `x0` and `stp > 0` a guess for the first step to try.
-
      Note that when Armijo's condition does not hold, the quadratic
      interpolation yields `gamma < 1/(2 - 2*ftol)`. Hence, taking an upper
      bound `smax > 1/(2 - 2*ftol)` has no effects while taking a lower bound
      `smin ≥ 1/(2 - 2*ftol)` yields a safeguarded `gamma` always equal to
      `smin`. Therefore, to benefit from quadratic interpolation, one should
      choose `smin < smax ≤ 1/(2 - 2*ftol)`.
+
+     The subroutine `optm_start_line_search` shall be called to initialize each
+     new line-search with arguments: `lnsrch` the line-search instance, `f0`
+     the objective function at `x0` the variables at the start of the
+     line-search, `df0` the directional derivative of the objective function at
+     `x0` and `stp > 0` a guess for the first step to try.
 
      The subroutine `optm_iterate_line_search` shall be called to pursue the
      line-search arguments: `lnsrch` the line-search instance, `fx = f(x)` the
