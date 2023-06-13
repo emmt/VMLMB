@@ -16,15 +16,17 @@ Copyright (C) 2002-2022, Éric Thiébaut <eric.thiebaut@univ-lyon1.fr>
 """
 
 # Insure compatibility.
-from __future__ import absolute_import, division, print_function, unicode_literals
+from __future__ import (absolute_import, division, print_function,
+                        unicode_literals)
 
-import sys          # for sys.stdout
-import numpy as _np # to deal with numerical arrays
-import time         # to measure time
-import math         # for isnan() function
-from math import sqrt, isnan
+import math  # for isnan() function
+import sys  # for sys.stdout
+import time  # to measure time
+from math import isnan, sqrt
 
-#------------------------------------------------------------------------------
+import numpy as _np  # to deal with numerical arrays
+
+# ------------------------------------------------------------------------------
 # PREAMBLE
 
 # Numpy floating-point `dtype`s.
@@ -32,12 +34,13 @@ FLOATS = (_np.float32, _np.float64, _np.float128)
 
 DEBUG = True
 NOT_POSITIVE_DEFINITE = -1
-UNSTARTED_ALGORITHM   =  0
-TOO_MANY_EVALUATIONS  =  1
-TOO_MANY_ITERATIONS   =  2
-FTEST_SATISFIED       =  3
-XTEST_SATISFIED       =  4
-GTEST_SATISFIED       =  5
+UNSTARTED_ALGORITHM = 0
+TOO_MANY_EVALUATIONS = 1
+TOO_MANY_ITERATIONS = 2
+FTEST_SATISFIED = 3
+XTEST_SATISFIED = 4
+GTEST_SATISFIED = 5
+
 
 def reason(status):
     """Get reason of termination status.
@@ -74,7 +77,7 @@ def reason(status):
         return "too many evaluations"
     elif status == TOO_MANY_ITERATIONS:
         return "too many iterations"
-    elif status ==  FTEST_SATISFIED:
+    elif status == FTEST_SATISFIED:
         return "function reduction test satisfied"
     elif status == GTEST_SATISFIED:
         return "(projected) gradient test satisfied"
@@ -83,12 +86,15 @@ def reason(status):
     else:
         return "unknown status code"
 
+
 def identity(x):
     """This function just returns its argument."""
     return x
 
-#------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 # LINEAR CONJUGATE GRADIENT
+
 
 def conjgrad_printer(output, itr, t, x, phi, r, z, rho):
     """Default printer function for `optm.conjgrad`."""
@@ -96,23 +102,39 @@ def conjgrad_printer(output, itr, t, x, phi, r, z, rho):
         # No preconditioner is used.
         if itr == 0:
             print("# Iter.   Time (ms)     Δf(x)       ‖∇f(x)‖", file=output)
-            print("# --------------------------------------------",
-                  file=output)
-        print(f"{itr:7d} {t*1e3:11.3f} {phi:12.4e} {sqrt(rho):12.4e}",
-              file=output)
+            print("# --------------------------------------------", file=output)
+        print(f"{itr:7d} {t*1e3:11.3f} {phi:12.4e} {sqrt(rho):12.4e}", file=output)
     else:
         # A preconditioner is used.
         if itr == 0:
-            print("# Iter.   Time (ms)     Δf(x)       ‖∇f(x)‖     ‖∇f(x)‖_M",
-                  file=output)
-            print("# ---------------------------------------------------------",
-                  file=output)
-        print(f"{itr:7d} {t*1e3:11.3f} {phi:12.4e} {norm2(r):12.4e} {sqrt(rho):12.4e}",
-              file=output)
+            print(
+                "# Iter.   Time (ms)     Δf(x)       ‖∇f(x)‖     ‖∇f(x)‖_M", file=output
+            )
+            print(
+                "# ---------------------------------------------------------",
+                file=output,
+            )
+        print(
+            f"{itr:7d} {t*1e3:11.3f} {phi:12.4e} {norm2(r):12.4e} {sqrt(rho):12.4e}",
+            file=output,
+        )
 
-def conjgrad(A, b, x=None, *, precond=identity, maxiter=None, restart=None,
-             verb=0, printer=conjgrad_printer, output=sys.stdout,
-             ftol=1.0e-8, gtol=1.0e-5, xtol=1.0e-6):
+
+def conjgrad(
+    A,
+    b,
+    x=None,
+    *,
+    precond=identity,
+    maxiter=None,
+    restart=None,
+    verb=0,
+    printer=conjgrad_printer,
+    output=sys.stdout,
+    ftol=1.0e-8,
+    gtol=1.0e-5,
+    xtol=1.0e-6,
+):
     """Usage:
 
         (x, status) = conjgrad(A, b, x0=None)
@@ -253,7 +275,7 @@ def conjgrad(A, b, x=None, *, precond=identity, maxiter=None, restart=None,
 
     # Get options.
     if maxiter is None:
-        maxiter = 2*b.size + 1
+        maxiter = 2 * b.size + 1
     if restart is None:
         restart = min(50, b.size + 1)
     (fatol, frtol) = get_tolerances(ftol)
@@ -265,18 +287,18 @@ def conjgrad(A, b, x=None, *, precond=identity, maxiter=None, restart=None,
         x = _np.zeros(b.shape, b.dtype)
         x_is_zero = True
     else:
-        x_is_zero = (norm2(x) == 0.0)
+        x_is_zero = norm2(x) == 0.0
 
     # Define local variables.
-    #r = ...      # residuals `r = b - A⋅x`
-    #z = ...      # preconditioned residuals `z = M⋅r`
-    #p = ...      # search direction `p = z + β⋅p`
-    #q = ...      # `q = A⋅p`
-    #oldrho = ... # previous value of `rho`
-    rho = 0.0     # `rho = ⟨r,z⟩`
-    phi = 0.0     # function reduction
+    # r = ...      # residuals `r = b - A⋅x`
+    # z = ...      # preconditioned residuals `z = M⋅r`
+    # p = ...      # search direction `p = z + β⋅p`
+    # q = ...      # `q = A⋅p`
+    # oldrho = ... # previous value of `rho`
+    rho = 0.0  # `rho = ⟨r,z⟩`
+    phi = 0.0  # function reduction
     phimax = 0.0  # maximum function reduction
-    xtest = (xatol > 0.0 or xrtol > 0.0)
+    xtest = xatol > 0.0 or xrtol > 0.0
     if verb > 0:
         t0 = elapsed_time(0.0)
 
@@ -284,7 +306,7 @@ def conjgrad(A, b, x=None, *, precond=identity, maxiter=None, restart=None,
     k = 0
     while True:
         # Is this the initial or a restarted iteration?
-        restarting = (k == 0 or restart > 0 and (k%restart) == 0)
+        restarting = k == 0 or restart > 0 and (k % restart) == 0
 
         # Compute residuals and their squared norm.
         if restarting:
@@ -304,12 +326,13 @@ def conjgrad(A, b, x=None, *, precond=identity, maxiter=None, restart=None,
         z = precond(r)
 
         oldrho = rho
-        rho = inner(r, z); # rho = ‖r‖_M^2
+        rho = inner(r, z)
+        # rho = ‖r‖_M^2
         if k == 0:
             # Pre-compute the minimal Mahalanobis norm of the gradient for
             # convergence.  The Mahalanobis norm of the gradient is equal to
             # `sqrt(rho)`.
-            gtest = max(0.0, gatol, grtol*sqrt(rho))
+            gtest = max(0.0, gatol, grtol * sqrt(rho))
 
         if verb > 0 and (k % verb) == 0:
             printer(output, k, elapsed_time(t0), x, phi, r, z, rho)
@@ -329,29 +352,29 @@ def conjgrad(A, b, x=None, *, precond=identity, maxiter=None, restart=None,
             p = z
         else:
             # Apply recurrence.
-            beta = rho/oldrho
-            p = z + promote_multiplier(beta, p)*p
+            beta = rho / oldrho
+            p = z + promote_multiplier(beta, p) * p
 
         # Compute optimal step size `alpha` along search direction `p`.
-        q = A(p) # q = A*p
+        q = A(p)  # q = A*p
         gamma = inner(p, q)
         if not (gamma > 0.0):
             status = NOT_POSITIVE_DEFINITE
             break
-        alpha = rho/gamma
+        alpha = rho / gamma
 
         # Update variables.
-        x = update(x, alpha, p) # x += alpha*p
+        x = update(x, alpha, p)  # x += alpha*p
 
         # Check for convergence in the function reduction.
-        phi = alpha*rho/2.0     # phi = f(x_{k}) - f(x_{k+1}) ≥ 0
+        phi = alpha * rho / 2.0  # phi = f(x_{k}) - f(x_{k+1}) ≥ 0
         phimax = max(phi, phimax)
-        if phi <= max(0.0, fatol, frtol*phimax):
+        if phi <= max(0.0, fatol, frtol * phimax):
             status = FTEST_SATISFIED
             break
 
         # Check for convergence in the variables.
-        if xtest and alpha*norm2(p) <= tolerance(x, xatol, xrtol):
+        if xtest and alpha * norm2(p) <= tolerance(x, xatol, xrtol):
             status = XTEST_SATISFIED
             break
 
@@ -366,8 +389,10 @@ def conjgrad(A, b, x=None, *, precond=identity, maxiter=None, restart=None,
             print(f"# {reason(status)}", file=output)
     return (x, status)
 
-#------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 # LINE SEARCH
+
 
 class LineSearch:
     """Simple line search method with backtracking and parabolic interpolation.
@@ -429,13 +454,14 @@ class LineSearch:
     `optm.LineSearch.iterate`.
 
     """
+
     def __init__(self, ftol=1e-4, smin=0.2, smax=None):
         if ftol <= 0 or ftol > 0.5:
             raise ValueError("`ftol` must be in the range (0,0.5]")
         if smin <= 0:
             raise ValueError("`smin` must be strictly greater than 0")
         if smax is None:
-            smax = max(smin, 1.0/(2.0 + 2.0*ftol))
+            smax = max(smin, 1.0 / (2.0 + 2.0 * ftol))
         if smax >= 1:
             raise ValueError("`smax` must be strictly less than 1")
         if smin > smax:
@@ -468,7 +494,7 @@ class LineSearch:
             raise ValueError("first step to try must be strictly greater than 0")
         self._finit = f0
         self._ginit = df0
-        self._step  = stp
+        self._step = stp
         self._stage = 1
 
     def iterate(self, fx):
@@ -494,9 +520,9 @@ class LineSearch:
         """
         finit = self._finit
         ginit = self._ginit
-        step  = self._step
-        ftol  = self._ftol
-        if fx <= finit + ftol*(ginit*step):
+        step = self._step
+        ftol = self._ftol
+        if fx <= finit + ftol * (ginit * step):
             # Line-search has converged.
             self._stage = 2
         else:
@@ -505,20 +531,20 @@ class LineSearch:
             smax = self._smax
             if smin < smax:
                 # Compute a safeguarded parabolic interpolation step.
-                q = -ginit*step
-                r = 2*((fx - finit) + q)
-                if q <= smin*r:
+                q = -ginit * step
+                r = 2 * ((fx - finit) + q)
+                if q <= smin * r:
                     gamma = smin
-                elif q >= smax*r:
+                elif q >= smax * r:
                     gamma = smax
                 else:
-                    gamma = q/r
+                    gamma = q / r
 
             elif smin == smax:
                 gamma = smin
             else:
                 raise AssertionError("invalid fields `smin` and `smax`")
-            self._step = gamma*step
+            self._step = gamma * step
             self._stage = 1
 
     def converged(self):
@@ -529,8 +555,8 @@ class LineSearch:
         """Get next line-search step to take."""
         return self._step
 
-def steepest_descent_step(x, d, fx, *, f2nd=None, fmin=None,
-                          dxrel=None, dxabs=None):
+
+def steepest_descent_step(x, d, fx, *, f2nd=None, fmin=None, dxrel=None, dxabs=None):
     """Determine a step length along the steepest descent.
 
         alpha = optm.steepest_descent_step(x, d, fx, *,
@@ -566,7 +592,7 @@ def steepest_descent_step(x, d, fx, *, f2nd=None, fmin=None,
     Inf = _np.inf
     if not f2nd is None and 0 < f2nd < Inf:
         # Use typical value of second derivative of objective function.
-        alpha = 1.0/f2nd
+        alpha = 1.0 / f2nd
         if 0 < alpha < Inf:
             return alpha
 
@@ -611,18 +637,18 @@ def steepest_descent_step(x, d, fx, *, f2nd=None, fmin=None,
         #     2⋅(f(x) - fmin)/‖d‖²
         #
         dnorm = norm2(d)
-        alpha = 2*(fx - fmin)/(dnorm*dnorm)
+        alpha = 2 * (fx - fmin) / (dnorm * dnorm)
         if 0 < alpha < Inf:
             return alpha
     else:
-        dnorm = None # Euclidean norm of `d` not yet computed.
+        dnorm = None  # Euclidean norm of `d` not yet computed.
 
     if not dxrel is None and 0 < dxrel < 1:
         # Use relative norm of initial change of variables.
         if dnorm is None:
             dnorm = norm2(d)
         xnorm = norm2(x)
-        alpha = dxrel*xnorm/dnorm
+        alpha = dxrel * xnorm / dnorm
         if 0 < alpha < Inf:
             return alpha
 
@@ -630,14 +656,16 @@ def steepest_descent_step(x, d, fx, *, f2nd=None, fmin=None,
         # Use absolute norm of initial change of variables.
         if dnorm is None:
             dnorm = norm2(d)
-        alpha = dxabs/dnorm
+        alpha = dxabs / dnorm
         if 0 < alpha < Inf:
             return alpha
 
     raise ValueError("invalid settings for steepest descent step length")
 
-#------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 # L-BFGS APPROXIMATION
+
 
 class LBFGS:
     """
@@ -671,14 +699,14 @@ class LBFGS:
 
         """
         m = self.m
-        self.mp    = 0 # number of meorized steps
-        self.itr   = 0 # number of updates
+        self.mp = 0  # number of meorized steps
+        self.itr = 0  # number of updates
         self.gamma = 0.0
-        self.S     = [None for i in range(m)]
-        self.Y     = [None for i in range(m)]
+        self.S = [None for i in range(m)]
+        self.Y = [None for i in range(m)]
         self.alpha = _np.full(m, 0.0, _np.double)
-        self.rho   = _np.full(m, 0.0, _np.double)
-        self.tmp   = _np.full(m, 0.0, _np.double)
+        self.rho = _np.full(m, 0.0, _np.double)
+        self.tmp = _np.full(m, 0.0, _np.double)
 
     def update(self, s, y):
         """
@@ -700,7 +728,7 @@ class LBFGS:
         sty = inner(s, y)
         if sty <= 0:
             return False
-        self.gamma = sty/inner(y, y)
+        self.gamma = sty / inner(y, y)
         m = self.m
         if m >= 1:
             k = self.itr % m
@@ -767,40 +795,40 @@ class LBFGS:
                 rho = self.tmp
 
         last = self.itr + m
-        inds = [i%m for i in range(last - mp, last)]
+        inds = [i % m for i in range(last - mp, last)]
 
         if regular:
             # Apply the regular L-BFGS recursion.
             gamma = self.gamma
             for i in reversed(inds):
-                alpha_i = inner(d, S[i])/rho[i]
-                d = update(d, -alpha_i, Y[i]) # d -= alpha_i*Y[i]
+                alpha_i = inner(d, S[i]) / rho[i]
+                d = update(d, -alpha_i, Y[i])  # d -= alpha_i*Y[i]
                 alpha[i] = alpha_i
 
             if gamma > 0 and gamma != 1:
                 d = scale(d, gamma)
 
             for i in inds:
-                beta = inner(d, Y[i])/rho[i]
+                beta = inner(d, Y[i]) / rho[i]
                 d = update(d, alpha[i] - beta, S[i])
 
         else:
             # L-BFGS recursion on a subset of free variables specified by a
             # selection of indices.
             gamma = 0.0
-            d *= msk # restrict argument to the subset of free variables
+            d *= msk  # restrict argument to the subset of free variables
             for i in reversed(inds):
                 s_i = S[i]
-                y_i = msk*Y[i]
+                y_i = msk * Y[i]
                 rho_i = inner(s_i, y_i)
                 if rho_i > 0:
                     if gamma <= 0.0:
-                        gamma = rho_i/inner(y_i, y_i)
-                    alpha_i = inner(d, s_i)/rho_i
+                        gamma = rho_i / inner(y_i, y_i)
+                    alpha_i = inner(d, s_i) / rho_i
                     d = update(d, -alpha_i, y_i)
                     alpha[i] = alpha_i
                     rho[i] = rho_i
-                y_i = [] # free memory
+                y_i = []  # free memory
 
             if gamma > 0 and gamma != 1:
                 d = scale(d, gamma)
@@ -808,13 +836,15 @@ class LBFGS:
             for i in inds:
                 rho_i = rho[i]
                 if rho_i > 0:
-                    beta = inner(d, Y[i])/rho_i
-                    d = update(d, alpha[i] - beta, msk*S[i])
+                    beta = inner(d, Y[i]) / rho_i
+                    d = update(d, alpha[i] - beta, msk * S[i])
 
         return (d, gamma > 0)
 
-#------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 # SEPARABLE BOUND CONSTRAINTS
+
 
 def clamp(x, xmin, xmax):
     """
@@ -836,6 +866,7 @@ def clamp(x, xmin, xmax):
             return _np.maximum(x, xmin)
         else:
             return _np.clip(x, xmin, xmax)
+
 
 def unblocked_variables(x, xmin, xmax, g):
     """
@@ -859,12 +890,13 @@ def unblocked_variables(x, xmin, xmax, g):
         if xmax is None:
             return g != zero
         else:
-            return (g > zero)|((g < zero)&(x < xmax))
+            return (g > zero) | ((g < zero) & (x < xmax))
     else:
         if xmax is None:
-            return ((g > zero)&(x > xmin))|(g < zero)
+            return ((g > zero) & (x > xmin)) | (g < zero)
         else:
-            return ((g > zero)&(x > xmin))|((g < zero)&(x < xmax))
+            return ((g > zero) & (x > xmin)) | ((g < zero) & (x < xmax))
+
 
 def line_search_limits(x0, xmin, xmax, pm, d):
     """Get limits on line search step length.
@@ -918,7 +950,7 @@ def line_search_limits(x0, xmin, xmax, pm, d):
         else:
             i = d > z
             if _np.any(i):
-                a = (x0 - xmin)[i]/d[i]
+                a = (x0 - xmin)[i] / d[i]
                 amin = _np.amin(a)
                 amax = _np.amax(a)
         if unbounded_above:
@@ -927,7 +959,7 @@ def line_search_limits(x0, xmin, xmax, pm, d):
         else:
             i = d < z
             if _np.any(i):
-                a = (x0 - xmax)[i]/d[i]
+                a = (x0 - xmax)[i] / d[i]
                 amin = min(amin, _np.amin(a))
                 if amax < Inf:
                     amax = max(amax, _np.amax(a))
@@ -939,7 +971,7 @@ def line_search_limits(x0, xmin, xmax, pm, d):
         else:
             i = d < z
             if _np.any(i):
-                a = (xmin - x0)[i]/d[i]
+                a = (xmin - x0)[i] / d[i]
                 amin = _np.amin(a)
                 amax = _np.amax(a)
         if unbounded_above:
@@ -948,7 +980,7 @@ def line_search_limits(x0, xmin, xmax, pm, d):
         else:
             i = d > z
             if _np.any(i):
-                a = (xmax - x0)[i]/d[i]
+                a = (xmax - x0)[i] / d[i]
                 amin = min(amin, _np.amin(a))
                 if amax < Inf:
                     amax = max(amax, _np.amax(a))
@@ -956,6 +988,7 @@ def line_search_limits(x0, xmin, xmax, pm, d):
     if amax < 0:
         amax = Inf
     return (amin, amax)
+
 
 def line_search_step_max(x0, xmin, xmax, pm, d):
     """Get upper bound on line search step length.
@@ -993,7 +1026,7 @@ def line_search_step_max(x0, xmin, xmax, pm, d):
         else:
             i = d > z
             if _np.any(i):
-                amax = _np.amax((x0 - xmin)[i]/d[i])
+                amax = _np.amax((x0 - xmin)[i] / d[i])
                 if amax >= Inf:
                     return Inf
         if unbounded_above:
@@ -1002,7 +1035,7 @@ def line_search_step_max(x0, xmin, xmax, pm, d):
         else:
             i = d < z
             if _np.any(i):
-                amax = max(amax, _np.amax((x0 - xmax)[i]/d[i]))
+                amax = max(amax, _np.amax((x0 - xmax)[i] / d[i]))
     else:
         # We are moving in the forward direction.
         if unbounded_below:
@@ -1011,7 +1044,7 @@ def line_search_step_max(x0, xmin, xmax, pm, d):
         else:
             i = d < z
             if _np.any(i):
-                amax = _np.amax((xmin - x0)[i]/d[i])
+                amax = _np.amax((xmin - x0)[i] / d[i])
                 if amax >= Inf:
                     return Inf
         if unbounded_above:
@@ -1020,29 +1053,59 @@ def line_search_step_max(x0, xmin, xmax, pm, d):
         else:
             i = d > z
             if _np.any(i):
-                amax = max(amax, _np.amax((xmax - x0)[i]/d[i]))
+                amax = max(amax, _np.amax((xmax - x0)[i] / d[i]))
     # Upper step length bound may be unlimited.
     if amax < 0:
         amax = Inf
     return amax
 
-#-----------------------------------------------------------------------------
+
+# -----------------------------------------------------------------------------
 # VMLMB ALGORITHM
 
-def vmlmb_printer(output, iters, evals, rejects,
-                  t, x, fx, gx, pgnorm, alpha, fg):
+
+def vmlmb_printer(output, iters, evals, rejects, t, x, fx, gx, pgnorm, alpha, fg):
     """Default printer for `optm.vmlmb`."""
     if iters < 1:
-        print("# Iter.   Time (ms)    Eval. Reject.       Obj. Func.           Grad.       Step", file=output)
-        print("# ---------------------------------------------------------------------------------", file=output)
-    print(f"{iters:7d} {t*1e3:11.3f} {evals:7d} {rejects:7d} {fx:23.15e} {pgnorm:11.3e} {alpha:11.3e}", file=output)
+        print(
+            "# Iter.   Time (ms)    Eval. Reject.       Obj. Func.           Grad.       Step",
+            file=output,
+        )
+        print(
+            "# ---------------------------------------------------------------------------------",
+            file=output,
+        )
+    print(
+        f"{iters:7d} {t*1e3:11.3f} {evals:7d} {rejects:7d} {fx:23.15e} {pgnorm:11.3e} {alpha:11.3e}",
+        file=output,
+    )
 
-def vmlmb(fg, x0, *, lower=None, upper=None, mem=5, blmvm=False,
-          lnsrch=LineSearch(),
-          f2nd=None, fmin=None, dxrel=None, dxabs=1.0,
-          epsilon=0.0, ftol=1.0e-8, gtol=1.0e-5, xtol=1.0e-6,
-          maxiter=_np.inf, maxeval=_np.inf, verb=0, throwerrors=True,
-          printer=vmlmb_printer, observer=None, output=sys.stdout):
+
+def vmlmb(
+    fg,
+    x0,
+    *,
+    lower=None,
+    upper=None,
+    mem=5,
+    blmvm=False,
+    lnsrch=LineSearch(),
+    f2nd=None,
+    fmin=None,
+    dxrel=None,
+    dxabs=1.0,
+    epsilon=0.0,
+    ftol=1.0e-8,
+    gtol=1.0e-5,
+    xtol=1.0e-6,
+    maxiter=_np.inf,
+    maxeval=_np.inf,
+    verb=0,
+    throwerrors=True,
+    printer=vmlmb_printer,
+    observer=None,
+    output=sys.stdout,
+):
     """Minimize non-linear objective function subject to bound constaints.
 
         (x, fx, gx, status) = optm.vmlmb(fg, x0, lower=, upper=, mem=, ...)
@@ -1190,9 +1253,9 @@ def vmlmb(fg, x0, *, lower=None, upper=None, mem=5, blmvm=False,
 
     # Tolerances.  Most of these are forced to be nonnegative to simplify
     # tests.
-    (fatol, frtol) = get_tolerances(ftol, atol = -Inf)
-    (gatol, grtol) = get_tolerances(gtol, atol = 0.0)
-    (xatol, xrtol) = get_tolerances(xtol, atol = 0.0)
+    (fatol, frtol) = get_tolerances(ftol, atol=-Inf)
+    (gatol, grtol) = get_tolerances(gtol, atol=0.0)
+    (xatol, xrtol) = get_tolerances(xtol, atol=0.0)
 
     # Bound constraints.  For faster code, unlimited bounds are preferentially
     # represented by `None`.
@@ -1206,26 +1269,26 @@ def vmlmb(fg, x0, *, lower=None, upper=None, mem=5, blmvm=False,
         blmvm = False
 
     # Other initialization.
-    x = x0           # initial iterate (avoiding copy)
-    g = None         # gradient
-    f0 = +Inf        # function value at start of line-search
-    g0 = None        # gradient at start of line-search
-    d = None         # search direction
-    s = None         # effective step
-    pg = None        # projected gradient
-    pg0 = None       # projected gradient at start of line search
-    pgnorm = 0.0     # Euclidean norm of the (projected) gradient
-    alpha = 0.0      # step length
-    evals = 0        # number of calls to `fg`
-    iters = 0        # number of iterations
-    projs = 0        # number of projections onto the feasible set
-    rejects = 0      # number of search direction rejections
-    status = 0       # non-zero when algorithm is about to terminate
-    best_f = +Inf    # function value at `best_x`
-    best_g = None    # gradient at `best_x`
-    best_x = None    # best solution found so far
-    best_pgnorm = -1 # norm of projected gradient at `best_x` (< 0 if unknown)
-    best_alpha =  0  # step length at `best_x` (< 0 if unknown)
+    x = x0  # initial iterate (avoiding copy)
+    g = None  # gradient
+    f0 = +Inf  # function value at start of line-search
+    g0 = None  # gradient at start of line-search
+    d = None  # search direction
+    s = None  # effective step
+    pg = None  # projected gradient
+    pg0 = None  # projected gradient at start of line search
+    pgnorm = 0.0  # Euclidean norm of the (projected) gradient
+    alpha = 0.0  # step length
+    evals = 0  # number of calls to `fg`
+    iters = 0  # number of iterations
+    projs = 0  # number of projections onto the feasible set
+    rejects = 0  # number of search direction rejections
+    status = 0  # non-zero when algorithm is about to terminate
+    best_f = +Inf  # function value at `best_x`
+    best_g = None  # gradient at `best_x`
+    best_x = None  # best solution found so far
+    best_pgnorm = -1  # norm of projected gradient at `best_x` (< 0 if unknown)
+    best_alpha = 0  # step length at `best_x` (< 0 if unknown)
     best_evals = -1  # number of calls to `fg` at `best_x`
     last_evals = -1  # number of calls to `fg` at last iterate
     last_print = -1  # iteration number for last print
@@ -1261,9 +1324,9 @@ def vmlmb(fg, x0, *, lower=None, upper=None, mem=5, blmvm=False,
         if f < best_f or evals == 1:
             # Save best solution so far.
             best_f = f
-            best_g = g # FIXME: this is not a copy
-            best_x = x # FIXME: this is not a copy
-            best_pgnorm = -1 # must be recomputed
+            best_g = g  # FIXME: this is not a copy
+            best_x = x  # FIXME: this is not a copy
+            best_pgnorm = -1  # must be recomputed
             best_alpha = alpha
             best_evals = evals
 
@@ -1286,7 +1349,7 @@ def vmlmb(fg, x0, *, lower=None, upper=None, mem=5, blmvm=False,
                 # Determine the subset of free variables and compute the norm
                 # of the projected gradient (needed to check for convergence).
                 freevars = unblocked_variables(x, lower, upper, g)
-                pg = freevars*g # FIXME: freevars.astype(T)
+                pg = freevars * g  # FIXME: freevars.astype(T)
                 pgnorm = norm2(pg)
                 if not blmvm:
                     # Projected gradient no longer needed, free some memory.
@@ -1304,7 +1367,7 @@ def vmlmb(fg, x0, *, lower=None, upper=None, mem=5, blmvm=False,
             # Check for algorithm convergence or termination.
             if evals == 1:
                 # Compute value for testing the convergence in the gradient.
-                gtest = max(gatol, grtol*pgnorm)
+                gtest = max(gatol, grtol * pgnorm)
 
             if pgnorm <= gtest:
                 # Convergence in gradient.
@@ -1313,14 +1376,14 @@ def vmlmb(fg, x0, *, lower=None, upper=None, mem=5, blmvm=False,
 
             if stage == 2:
                 # Check convergence in relative function reduction.
-                if f <= fatol or abs(f - f0) <= frtol*max(abs(f), abs(f0)):
+                if f <= fatol or abs(f - f0) <= frtol * max(abs(f), abs(f0)):
                     status = FTEST_SATISFIED
                     break
                 # Compute the effective change of variables.
                 s = x - x0
                 snorm = norm2(s)
                 # Check convergence in variables.
-                if snorm <= xatol or (xrtol > 0 and snorm <= xrtol*norm2(x)):
+                if snorm <= xatol or (xrtol > 0 and snorm <= xrtol * norm2(x)):
                     status = XTEST_SATISFIED
                     break
 
@@ -1341,8 +1404,7 @@ def vmlmb(fg, x0, *, lower=None, upper=None, mem=5, blmvm=False,
 
             # Possibly print iteration information.
             if verb > 0 and (iters % verb) == 0:
-                printer(output, iters, evals, rejects, t, x, f, g, pgnorm,
-                        alpha, fg)
+                printer(output, iters, evals, rejects, t, x, f, g, pgnorm, alpha, fg)
                 last_print = iters
 
             if stage != 0:
@@ -1361,7 +1423,7 @@ def vmlmb(fg, x0, *, lower=None, upper=None, mem=5, blmvm=False,
             # Use L-BFGS approximation to compute a search direction and check
             # that it is an acceptable descent direction.
             if blmvm:
-                (d, scaled) = lbfgs.apply(-pg)*freevars
+                (d, scaled) = lbfgs.apply(-pg) * freevars
             else:
                 (d, scaled) = lbfgs.apply(-g, freevars)
             dg = inner(d, g)
@@ -1375,17 +1437,19 @@ def vmlmb(fg, x0, *, lower=None, upper=None, mem=5, blmvm=False,
                 flg = 2
                 if dg >= 0:
                     # L-BFGS approximation does not yield a descent direction.
-                    flg = 0 # discard search direction
+                    flg = 0  # discard search direction
                     if not bounded:
                         if throwerrors:
-                            raise AssertionError("L-BFGS approximation is not positive definite")
+                            raise AssertionError(
+                                "L-BFGS approximation is not positive definite"
+                            )
                         status = NOT_POSITIVE_DEFINITE
                         break
                 elif epsilon > 0:
                     # A more restrictive criterion has been specified for
                     # accepting a descent direction.
-                    if dg > -epsilon*norm2(d)*pgnorm:
-                        flg = 0 # discard search direction
+                    if dg > -epsilon * norm2(d) * pgnorm:
+                        flg = 0  # discard search direction
 
             if flg == 0:
                 # No exploitable information about the Hessian is available or
@@ -1393,11 +1457,11 @@ def vmlmb(fg, x0, *, lower=None, upper=None, mem=5, blmvm=False,
                 # to be a sufficient descent direction. Take the steepest
                 # feasible descent direction.
                 if bounded:
-                    d = -g*freevars
+                    d = -g * freevars
                 else:
                     d = -g
-                dg = -pgnorm**2
-                flg = 1 # scaling needed
+                dg = -(pgnorm ** 2)
+                flg = 1  # scaling needed
 
             # Determine the length `alpha` of the initial step along `d`.
             if flg == 2:
@@ -1410,9 +1474,9 @@ def vmlmb(fg, x0, *, lower=None, upper=None, mem=5, blmvm=False,
                 # Find a suitable step size along the steepest feasible descent
                 # direction `d`. Note that `pgnorm`, the Euclidean norm of the
                 # (projected) gradient, is also that of `d` in that case.
-                alpha = steepest_descent_step(x, pgnorm, f,
-                                              f2nd=f2nd, fmin=fmin,
-                                              dxrel=dxrel, dxabs=dxabs)
+                alpha = steepest_descent_step(
+                    x, pgnorm, f, f2nd=f2nd, fmin=fmin, dxrel=dxrel, dxabs=dxabs
+                )
 
             if bounded:
                 # Safeguard the step to avoid searching in a region where
@@ -1426,16 +1490,16 @@ def vmlmb(fg, x0, *, lower=None, upper=None, mem=5, blmvm=False,
 
             # Save iterate at start of line-search.
             f0 = f
-            g0 = g # FIXME: not a copy
-            x0 = x # FIXME: not a copy
+            g0 = g  # FIXME: not a copy
+            x0 = x  # FIXME: not a copy
             if blmvm:
-                pg0 = pg # FIXME: not a copy
+                pg0 = pg  # FIXME: not a copy
 
         # Compute next iterate.
         if alpha == 1:
             x = x0 + d
         else:
-            x = x0 + alpha*d
+            x = x0 + alpha * d
 
     # In case of abnormal termination, some progresses may have been made since
     # the start of the line-search. In that case, we restore the best solution
@@ -1453,7 +1517,7 @@ def vmlmb(fg, x0, *, lower=None, upper=None, mem=5, blmvm=False,
                 # Re-compute the norm of the (projected) gradient.
                 if bounded:
                     freevars = unblocked_variables(x, lower, upper, g)
-                    pgnorm = norm2(g*freevars)
+                    pgnorm = norm2(g * freevars)
                 else:
                     pgnorm = norm2(g)
 
@@ -1467,15 +1531,16 @@ def vmlmb(fg, x0, *, lower=None, upper=None, mem=5, blmvm=False,
         observer(iters, evals, rejects, t, x, f, g, pgnorm, alpha, fg)
     if verb > 0:
         if iters > last_print:
-            printer(output, iters, evals, rejects, t, x, f, g, pgnorm,
-                    alpha, fg)
+            printer(output, iters, evals, rejects, t, x, f, g, pgnorm, alpha, fg)
         if printer is vmlmb_printer:
             print(f"# Termination: {reason(status)}", file=output)
 
     return (x, f, g, status)
 
-#------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 # VECTORIZED OPERATIONS
+
 
 def inner(x, y):
     """Compute the inner product of `x` and `y` regardless of their shapes (their
@@ -1487,6 +1552,7 @@ def inner(x, y):
     """
     return _np.vdot(x, y)
 
+
 def norm1(x):
     """Compute the L1-norm of `x`, that is `sum(abs(x))` but computed as
     efficiently as possible.
@@ -1494,6 +1560,7 @@ def norm1(x):
     See also: `optm.norm2`, `optm.norminf`.
     """
     return _np.linalg.norm(x.ravel(), 1)
+
 
 # to speed-up, see https://stackoverflow.com/questions/30437947/most-memory-efficient-way-to-compute-abs2-of-complex-numpy-ndarray
 def norm2(x):
@@ -1505,6 +1572,7 @@ def norm2(x):
     """
     return _np.linalg.norm(x.ravel())
 
+
 def norminf(x):
     """
     Compute the infinite norm of `x`, that is `max(abs(x))` but computed as
@@ -1513,6 +1581,7 @@ def norminf(x):
     See also: `optm.norm1`, `optm.norm2`.
     """
     return _np.linalg.norm(x.ravel(), _np.inf)
+
 
 def promote_multiplier(alpha, x):
     """
@@ -1527,6 +1596,7 @@ def promote_multiplier(alpha, x):
     elif T == _np.float128 or T == _np.complex256:
         return _np.float128(alpha)
 
+
 def scale(x, alpha):
     """
     Compute `alpha*x` efficiently and taking care of preserving the
@@ -1540,6 +1610,7 @@ def scale(x, alpha):
         return -x
     else:
         return _np.multiply(promote_multiplier(alpha, x), x)
+
 
 # to speed-up, see https://stackoverflow.com/questions/45200278/numpy-fusing-multiply-and-add-to-avoid-wasting-memory
 def update(y, alpha, x):
@@ -1556,21 +1627,25 @@ def update(y, alpha, x):
     else:
         return _np.add(y, scale(x, alpha))
 
+
 def abs2(x):
     """Returns the squared absolute value of its argument."""
     if _np.iscomplexobj(x):
         x_re = x.real
         x_im = x.imag
-        return x_re*x_re + x_im*x_im
+        return x_re * x_re + x_im * x_im
     else:
-        return x*x
+        return x * x
 
-#------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
 # UTILITIES
+
 
 def elapsed_time(t0=0.0):
     """Get elapsed time since `t0` in seconds."""
     return time.clock_gettime(time.CLOCK_MONOTONIC) - t0
+
 
 def tolerance(x, atol, rtol):
     """Given absolute and relative tolerances `atol` and `rtol`, this function
@@ -1589,7 +1664,8 @@ def tolerance(x, atol, rtol):
     if rtol <= 0.0:
         return tol
     else:
-        return max(tol, rtol*norm2(x))
+        return max(tol, rtol * norm2(x))
+
 
 def get_tolerances(tol, /, *, atol=0.0):
     """Get absolute and relative tolerances.
