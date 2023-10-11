@@ -77,8 +77,8 @@ function [d, scaled] = optm_apply_lbfgs(lbfgs, d, freevars)
                 alpha_i = optm_inner(d, s_i)/rho_i;
                 d = d - alpha_i*y_i;
                 alpha(i) = alpha_i;
-                rho(i) = rho_i;
             end
+            rho(i) = rho_i;
             s_i = []; % free some memory?
             y_i = []; % free some memory?
         end

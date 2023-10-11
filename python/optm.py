@@ -799,7 +799,7 @@ class LBFGS:
                     alpha_i = inner(d, s_i)/rho_i
                     d = update(d, -alpha_i, y_i)
                     alpha[i] = alpha_i
-                    rho[i] = rho_i
+                rho[i] = rho_i
                 y_i = [] # free memory
 
             if gamma > 0 and gamma != 1:

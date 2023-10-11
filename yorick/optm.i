@@ -822,8 +822,8 @@ func optm_apply_lbfgs(lbfgs, d, &scaled, freevars)
                 alpha_i = optm_inner(d, s_i)/rho_i;
                 optm_update, d, -alpha_i, y_i;
                 alpha(i) = alpha_i;
-                rho(i) = rho_i;
             }
+            rho(i) = rho_i;
             y_i = []; // free memory
         }
         if (gamma > 0 && gamma != 1) {
