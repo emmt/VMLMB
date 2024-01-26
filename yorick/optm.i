@@ -556,28 +556,34 @@ func optm_steepest_descent_step(x, d, fx, f2nd, fmin, dxrel, dxabs)
      The function returns the first valid step length that is computed
      according to the following trailing arguments (in the listed order):
 
-     - `f2nd` a typical value of the second derivatives of the objective
+     - `f2nd` is void or a typical value of the second derivatives of the
+       objective function.
+
+     - `fmin` is void or an estimate of the minimal value of the objective
        function.
 
-     - `fmin` an estimate of the minimal value of the objective function.
+     - `dxrel` is void or a small step size relative to the norm of the
+       variables.
 
-     - `dxrel` a small step size relative to the norm of the variables.
-
-     - `dxabs` an absolute size in the norm of the change of variables.
+     - `dxabs` is void or an absolute size in the norm of the change of
+       variables.
 
    SEE ALSO: optm_start_line_search.
  */
 {
-    // We rely the fact that comparisons involving a NaN always yield false.
-    INF = OPTM_INFINITE;
-    if (0 < f2nd && f2nd < INF) {
-        // Use typical value of second derivative of objective function.
-        alpha = 1.0/f2nd;
-        if (0 < alpha && alpha < INF) {
-            return alpha;
-        }
+    // Use typical value of second derivative of objective function if provided
+    // by the caller.
+    if (! is_void(f2nd) && f2nd > 0.0) {
+        return 1.0/f2nd;
     }
-    if (-INF < fmin && fmin < fx) {
+
+    // Euclidean norm of `d` is needed by the other estimators.
+    dnorm = optm_norm2(d);
+    if (! (dnorm > 0.0)) {
+        error, "invalid null search direction";
+    }
+
+    if (! is_void(fmin) && fmin < fx) {
         // The behavior of a quadratic objective function f(x) along the search
         // direction d starting at x is given by:
         //
@@ -617,34 +623,16 @@ func optm_steepest_descent_step(x, d, fx, f2nd, fmin, dxrel, dxabs)
         //
         //     2⋅(f(x) - fmin)/‖d‖²
         //
-        dnorm = optm_norm2(d);
-        alpha = 2*(fx - fmin)/dnorm^2;
-        if (0 < alpha && alpha < INF) {
-            return alpha;
-        }
-    } else {
-        dnorm = -1; // Euclidean norm of `d` not yet computed.
+        return 2.0*(fx - fmin)/dnorm^2;
     }
-    if (0 < dxrel && dxrel < 1) {
+    if (! is_void(dxrel) && 0.0 < dxrel && dxrel < 1.0) {
         // Use relative norm of initial change of variables.
-        if (dnorm < 0) {
-            dnorm = optm_norm2(d);
-        }
         xnorm = optm_norm2(x);
-        alpha = dxrel*xnorm/dnorm;
-        if (0 < alpha && alpha < INF) {
-            return alpha;
-        }
+        return dxrel*xnorm/dnorm;
     }
-    if (0 < dxabs && dxabs < INF) {
+    if (! is_void(dxabs) && dxabs > 0.0) {
         // Use absolute norm of initial change of variables.
-        if (dnorm < 0) {
-            dnorm = optm_norm2(d);
-        }
-        alpha = dxabs/dnorm;
-        if (0 < alpha && alpha < INF) {
-            return alpha;
-        }
+        return dxabs/dnorm;
     }
     error, "invalid settings for steepest descent step length";
 }
@@ -1257,7 +1245,6 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, blmvm=, lnsrch=,
 {
     // Constants.
     INF = OPTM_INFINITE;
-    NAN = OPTM_QUIET_NAN;
     TRUE = 1n;
     FALSE = 0n;
 
@@ -1268,9 +1255,6 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, blmvm=, lnsrch=,
     if (is_void(lnsrch)) lnsrch = optm_new_line_search();
     if (is_void(verb)) verb = 0;
     if (is_void(printer)) printer = _optm_vmlmb_printer;
-    if (is_void(f2nd)) f2nd = NAN;
-    if (is_void(fmin)) fmin = NAN;
-    if (is_void(dxrel)) dxrel = NAN;
     if (is_void(dxabs)) dxabs = 1.0;
     if (is_void(epsilon)) epsilon = 0.0;
     if (is_void(blmvm)) blmvm = FALSE;
