@@ -1773,7 +1773,7 @@ func optm_floating_point(type, what)
        what = 2 or "qNaN" or "NaN", for quiet NaN (Not a Number);
        what = 3 or "sNaN", for signaling NaN.
 
-    if `what` is a siting case is irrelevant.
+    if `what` is a string, case is irrelevant.
 
    SEE ALSO: ieee_set.
  */
