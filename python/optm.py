@@ -1355,7 +1355,8 @@ def vmlmb(fg, x0, *, lower=None, upper=None, mem=5, blmvm=False,
 
             # Use L-BFGS approximation to determine a new search direction.
             if blmvm:
-                (d, scaled) = lbfgs.apply(-pg)*freevars
+                (d, scaled) = lbfgs.apply(-pg)
+                d = d*freevars
             else:
                 (d, scaled) = lbfgs.apply(-g, freevars)
 
