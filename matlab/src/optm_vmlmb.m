@@ -311,10 +311,6 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
                 freevars = optm_unblocked_variables(x, lower, upper, g);
                 pg = freevars .* g;
                 pgnorm = optm_norm2(pg);
-                if ~blmvm
-                    %% Projected gradient no longer needed, free some memory.
-                    pg = [];
-                end
             else
                 %% Just compute the norm of the gradient.
                 pgnorm = optm_norm2(g);
@@ -455,10 +451,11 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
             end
             %% Save iterate at start of line-search.
             f0 = f;
-            g0 = g;
             x0 = x;
             if blmvm
                 pg0 = pg;
+            else
+                g0 = g;
             end
         end
         %% Compute next iterate.

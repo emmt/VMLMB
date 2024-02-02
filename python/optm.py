@@ -1425,10 +1425,11 @@ def vmlmb(fg, x0, *, lower=None, upper=None, mem=5, blmvm=False,
 
             # Save iterate at start of line-search.
             f0 = f
-            g0 = g # FIXME: not a copy
             x0 = x # FIXME: not a copy
             if blmvm:
                 pg0 = pg # FIXME: not a copy
+            else:
+                g0 = g # FIXME: not a copy
 
         # Compute next iterate.
         if alpha == 1:

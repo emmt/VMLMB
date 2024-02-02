@@ -1369,10 +1369,6 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, blmvm=, lnsrch=,
                 freevars = optm_unblocked_variables(x, lower, upper, g);
                 pg = freevars*g;
                 pgnorm = optm_norm2(pg);
-                if (!blmvm) {
-                    // Projected gradient no longer needed, free some memory.
-                    pg = [];
-                }
             } else {
                 // Just compute the norm of the gradient.
                 pgnorm = optm_norm2(g);
@@ -1518,10 +1514,11 @@ func optm_vmlmb(fg, x0, &f, &g, &status, lower=, upper=, mem=, blmvm=, lnsrch=,
             }
             // Save iterate at start of line-search.
             f0 = f;
-            eq_nocopy, g0, g;
             eq_nocopy, x0, x;
             if (blmvm) {
                 eq_nocopy, pg0, pg;
+            } else {
+                eq_nocopy, g0, g;
             }
         }
         // Compute next iterate.
