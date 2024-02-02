@@ -1225,7 +1225,7 @@ def vmlmb(fg, x0, *, lower=None, upper=None, mem=5, blmvm=False,
     best_g = None    # gradient at `best_x`
     best_x = None    # best solution found so far
     best_pgnorm = -1 # norm of projected gradient at `best_x` (< 0 if unknown)
-    best_alpha =  0  # step length at `best_x` (< 0 if unknown)
+    best_alpha =  0  # step length at `best_x`
     best_evals = -1  # number of calls to `fg` at `best_x`
     last_evals = -1  # number of calls to `fg` at last iterate
     last_print = -1  # iteration number for last print
@@ -1312,6 +1312,7 @@ def vmlmb(fg, x0, *, lower=None, upper=None, mem=5, blmvm=False,
                 break
 
             if stage == 2:
+                # Line-search has converged.
                 # Check convergence in relative function reduction.
                 if f <= fatol or abs(f - f0) <= frtol*max(abs(f), abs(f0)):
                     status = FTEST_SATISFIED
@@ -1345,34 +1346,31 @@ def vmlmb(fg, x0, *, lower=None, upper=None, mem=5, blmvm=False,
                         alpha, fg)
                 last_print = iters
 
+            # Update L-BFGS approximation if a new step has been performed.
             if stage != 0:
-                # At least one step has been performed, L-BFGS approximation
-                # can be updated.
                 if blmvm:
                     lbfgs.update(s, pg - pg0)
                 else:
                     lbfgs.update(s, g - g0)
 
-            # Determine a new search direction `d`.  Parameter `flg` is set to:
-            #   0 if `d` is not a search direction,
-            #   1 if `d` is unscaled steepest descent,
-            #   2 if `d` is scaled sufficient descent.
-            flg = 0
-            # Use L-BFGS approximation to compute a search direction and check
-            # that it is an acceptable descent direction.
+            # Use L-BFGS approximation to determine a new search direction.
             if blmvm:
                 (d, scaled) = lbfgs.apply(-pg)*freevars
             else:
                 (d, scaled) = lbfgs.apply(-g, freevars)
+
+            # Check whether `d` is an acceptable search direction and set
+            # `flg` to 0 if `d` is not acceptable,
+            #       to 1 if `d` is acceptable with rescaling,
+            #    or to 2 if `d` is acceptable without rescaling.
+            flg = 2 # assume no rescaling needed
             dg = inner(d, g)
             if not scaled:
-                # No exploitable curvature information, `d` is the unscaled
-                # steepest feasible direction, that is the opposite of the
-                # projected gradient.
-                flg = 1
+                # No exploitable curvature information, `d` is the steepest
+                # feasible direction.
+                flg = 1 # rescaling needed
             else:
                 # Some exploitable curvature information were available.
-                flg = 2
                 if dg >= 0:
                     # L-BFGS approximation does not yield a descent direction.
                     flg = 0 # discard search direction
@@ -1383,7 +1381,7 @@ def vmlmb(fg, x0, *, lower=None, upper=None, mem=5, blmvm=False,
                         break
                 elif epsilon > 0:
                     # A more restrictive criterion has been specified for
-                    # accepting a descent direction.
+                    # accepting a search direction.
                     if dg > -epsilon*norm2(d)*pgnorm:
                         flg = 0 # discard search direction
 
@@ -1397,11 +1395,11 @@ def vmlmb(fg, x0, *, lower=None, upper=None, mem=5, blmvm=False,
                 else:
                     d = -g
                 dg = -pgnorm**2
-                flg = 1 # scaling needed
+                flg = 1 # rescaling needed
 
             # Determine the length `alpha` of the initial step along `d`.
             if flg == 2:
-                # The search direction is already scaled.
+                # The search direction needs no rescaling.
                 alpha = 1.0
             else:
                 # Increment number of rejections if not very first iteration.

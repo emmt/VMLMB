@@ -241,7 +241,7 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
     best_g = [];     % gradient at `best_x`
     best_x = [];     % best solution found so far
     best_pgnorm = -1;% norm of projected gradient at `best_x` (< 0 if unknown)
-    best_alpha =  0; % step length at `best_x` (< 0 if unknown)
+    best_alpha =  0; % step length at `best_x`
     best_evals = -1; % number of calls to `fg` at `best_x`
     last_evals = -1; % number of calls to `fg` at last iterate
     last_print = -1; % iteration number for last print
@@ -359,46 +359,44 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
             break
         end
         if stage ~= 1
-            %% Possibly print iteration information.
+            %% Initial iteration or line-search has converged.
             if verb > 0 && mod(iters, verb) == 0
+                %% Print iteration information.
                 print_iteration(iters, time() - t0, evals, rejects, ...
                                 f, pgnorm, alpha);
                 last_print = iters;
             end
+            %% Update L-BFGS approximation if a new step has been performed.
             if stage ~= 0
-                %% At least one step has been performed, L-BFGS approximation
-                %% can be updated.
                 if blmvm
                     lbfgs = optm_update_lbfgs(lbfgs, s, pg - pg0);
                 else
                     lbfgs = optm_update_lbfgs(lbfgs, s, g - g0);
                 end
             end
-            %% Determine a new search direction `d`.  Parameter `dir` is set to:
-            %%   0 if `d` is not a search direction,
-            %%   1 if `d` is unscaled steepest descent,
-            %%   2 if `d` is scaled sufficient descent.
-            dir = 0;
-            %% Use L-BFGS approximation to compute a search direction and check
-            %% that it is an acceptable descent direction.
+            %% Use L-BFGS approximation to determine a new search direction.
             if blmvm
                 [d, scaled] = optm_apply_lbfgs(lbfgs, -pg);
                 d = d .* freevars;
             else
                 [d, scaled] = optm_apply_lbfgs(lbfgs, -g, freevars);
             end
+            %% Check whether `d` is an acceptable search direction and set
+            %% `flg` to 0 if `d` is not acceptable,
+            %%       to 1 if `d` is acceptable with rescaling,
+            %%    or to 2 if `d` is acceptable without rescaling.
+            flg = 2; %% assume no rescaling needed
             dg = optm_inner(d, g);
             if ~scaled
                 %% No exploitable curvature information, `d` is the unscaled
                 %% steepest feasible direction, that is the opposite of the
                 %% projected gradient.
-                dir = 1;
+                flg = 1; % rescaling needed
             else
                 %% Some exploitable curvature information were available.
-                dir = 2;
                 if dg >= 0
                     %% L-BFGS approximation does not yield a descent direction.
-                    dir = 0; % discard search direction
+                    flg = 0; % discard search direction
                     if ~bounded
                         if throwerrors
                             error('L-BFGS approximation is not positive definite');
@@ -408,13 +406,13 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
                     end
                 elseif epsilon > 0
                     %% A more restrictive criterion has been specified for
-                    %% accepting a descent direction.
+                    %% accepting a search direction.
                     if dg > -epsilon*optm_norm2(d)*pgnorm
-                        dir = 0; % discard search direction
+                        flg = 0; % discard search direction
                     end
                 end
             end
-            if dir == 0
+            if flg == 0
                 %% No exploitable information about the Hessian is available or
                 %% the direction computed using the L-BFGS approximation failed
                 %% to be a sufficient descent direction.  Take the steepest
@@ -425,16 +423,17 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
                     d = -g;
                 end
                 dg = -pgnorm^2;
-                dir = 1; % scaling needed
-            end
-            if dir ~= 2 && iters > 0
-                rejects = rejects + 1;
+                flg = 1; % rescaling needed
             end
             %% Determine the length `alpha` of the initial step along `d`.
-            if dir == 2
-                %% The search direction is already scaled.
+            if flg == 2
+                %% The search direction needs no rescaling.
                 alpha = 1.0;
             else
+                %% Increment number of rejections if not very first iteration.
+                if iters > 0
+                    rejects = rejects + 1;
+                end
                 %% Find a suitable step size along the steepest feasible
                 %% descent direction `d`.  Note that `pgnorm`, the Euclidean
                 %% norm of the (projected) gradient, is also that of `d` in
@@ -452,7 +451,7 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
             lnsrch = optm_start_line_search(lnsrch, f, dg, alpha);
             stage = lnsrch.stage;
             if stage ~= 1
-                error('something is wrong!');
+                error('initialization of line-search fails!');
             end
             %% Save iterate at start of line-search.
             f0 = f;
