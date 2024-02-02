@@ -407,29 +407,27 @@ function [x, f, g, status] = optm_vmlmb(fg, x, varargin)
                         flg = 0; % discard search direction
                     end
                 end
-            end
-            if flg == 0
-                %% No exploitable information about the Hessian is available or
-                %% the direction computed using the L-BFGS approximation failed
-                %% to be a sufficient descent direction.  Take the steepest
-                %% feasible descent direction.
-                if bounded
-                    d = -g .* freevars;
-                else
-                    d = -g;
+                %% Take the steepest feasible descent direction if the search
+                %% direction given by L-BFGS has been rejected.
+                if flg == 0
+                    if bounded
+                        d = -pg;
+                    else
+                        d = -g;
+                    end
+                    dg = -pgnorm^2;
+                    flg = 1; % rescaling needed
                 end
-                dg = -pgnorm^2;
-                flg = 1; % rescaling needed
+            end
+            if flg ~= 2 && iters > 0
+                %% L-BFGS search direction has been rejected.
+                rejects = rejects + 1;
             end
             %% Determine the length `alpha` of the initial step along `d`.
             if flg == 2
                 %% The search direction needs no rescaling.
                 alpha = 1.0;
             else
-                %% Increment number of rejections if not very first iteration.
-                if iters > 0
-                    rejects = rejects + 1;
-                end
                 %% Find a suitable step size along the steepest feasible
                 %% descent direction `d`.  Note that `pgnorm`, the Euclidean
                 %% norm of the (projected) gradient, is also that of `d` in
