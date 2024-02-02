@@ -479,6 +479,9 @@ func _optm_minpack2_ssc(ctx, task, x, &gx)
 if (batch()) {
     // Run all tests.
     include, dirname(current_include()) + "/optm.i", 1;
-    optm_minpack2_test, optm_minpack2_ept(), verb=1, gtol=0, xtol=0, ftol=0;
-    optm_minpack2_test, optm_minpack2_ssc(), verb=1, gtol=0, xtol=0, ftol=0;
+    optm_minpack2_test, optm_minpack2_ept(), verb=1, gtol=0, xtol=0, ftol=0, blmvm=0n;
+    optm_minpack2_test, optm_minpack2_ssc(), verb=1, gtol=0, xtol=0, ftol=0, blmvm=0n;
+
+    optm_minpack2_test, optm_minpack2_ept(), verb=1, gtol=0, xtol=0, ftol=0, blmvm=1n;
+    optm_minpack2_test, optm_minpack2_ssc(), verb=1, gtol=0, xtol=0, ftol=0, blmvm=1n;
 }
