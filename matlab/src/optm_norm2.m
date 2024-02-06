@@ -7,6 +7,6 @@
 function xnorm = optm_norm2(x)
     %%xnorm = norm(x(:), 2);
     %%xnorm = sqrt(x(:)'*x(:)); % <---- the fastest in an inlined function
-    %%xnorm = sqrt(sum(x(:).*x(:)));
-    xnorm = sqrt(sum((x.*x)(:))); % <-- the fastest in this context
+    xnorm = sqrt(sum(x(:).*x(:)));
+    %%xnorm = sqrt(sum((x.*x)(:))); % <-- the fastest in this context
 end

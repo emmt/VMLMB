@@ -52,7 +52,7 @@ function [amin, amax] = optm_line_search_limits(x0, xmin, xmax, pm, d)
                 amax = INF;
             else
                 i = d > 0;
-                a = (x0 - xmin)(i) ./ d(i);
+                a = (x0(i) - xmin(i)) ./ d(i);
                 amin = min(a);
                 amax = max(a);
             end
@@ -63,7 +63,7 @@ function [amin, amax] = optm_line_search_limits(x0, xmin, xmax, pm, d)
             end
         elseif min(d(:)) < 0
             i = d < 0;
-            a = (x0 - xmax)(i) ./ d(i);
+            a = (x0(i) - xmax(i)) ./ d(i);
             amin = min(amin, min(a));
             if amax < INF
                 amax = max(amax, max(a));
@@ -76,7 +76,7 @@ function [amin, amax] = optm_line_search_limits(x0, xmin, xmax, pm, d)
                 amax = INF;
             else
                 i = d < 0;
-                a = (xmin - x0)(i) ./ d(i);
+                a = (xmin(i) - x0(i)) ./ d(i);
                 amin = min(a);
                 amax = max(a);
             end
@@ -87,7 +87,7 @@ function [amin, amax] = optm_line_search_limits(x0, xmin, xmax, pm, d)
             end
         elseif max(d(:)) > 0
             i = d > 0;
-            a = (xmax - x0)(i) ./ d(i);
+            a = (xmax(i) - x0(i)) ./ d(i);
             amin = min(amin, min(a));
             if amax < INF
                 amax = max(amax, max(a));
