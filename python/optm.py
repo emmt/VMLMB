@@ -1394,7 +1394,7 @@ def vmlmb(fg, x0, *, lower=None, upper=None, mem=5, blmvm=False,
                         d = -g
                     dg = -pgnorm**2
                     flg = 1 # rescaling needed
-            if fgl != 2 and iters > 0:
+            if flg != 2 and iters > 0:
                 # L-BFGS search direction has been rejected.
                 ++rejects
             # Determine the length `alpha` of the initial step along `d`.
