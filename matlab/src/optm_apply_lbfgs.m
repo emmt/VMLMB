@@ -33,7 +33,7 @@ function [d, scaled] = optm_apply_lbfgs(lbfgs, d, freevars)
         regular = true;
     elseif isempty(freevars)
         regular = true;
-    elseif freevars % true if all elements of freevars are true
+    elseif all(freevars(:)) % true if all elements of freevars are true
         regular = true;
     else
         regular = false;
