@@ -45,7 +45,7 @@ function [amin, amax] = optm_line_search_limits(x0, xmin, xmax, pm, d)
         return
     end
     amax = -INF; % Upper step length bound not yet found.
-    if pm < 0
+    if all(pm(:) < 0)
         %% We are moving in the backward direction.
         if max(d(:)) > 0
             if unbounded_below
